@@ -1,0 +1,2598 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>食光 FoodTime — 独居青年吃饭决策助手</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=ZCOOL+KuaiLe&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/vue@3.4.38/dist/vue.global.prod.js" crossorigin="anonymous"></script>
+<script>
+  // 双 CDN 回退：如果 unpkg 因为网络原因没加载到 Vue，自动切到 jsdelivr
+  (function () {
+    function isVueReady() {
+      return typeof window.Vue !== 'undefined' && typeof window.Vue.createApp === 'function';
+    }
+    if (isVueReady()) return;
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/vue@3.4.38/dist/vue.global.prod.js';
+    s.crossOrigin = 'anonymous';
+    document.head.appendChild(s);
+  })();
+</script>
+<style>
+:root {
+  --cook: #E07856; --cook-dark: #C45A3E; --cook-light: #F4D5C8;
+  --order: #E8A82C; --order-dark: #C9881E; --order-light: #FAE5B8;
+  --diary: #6B7FD7; --diary-dark: #5266C0; --diary-light: #D5D9F0;
+  --shop: #6BAA75; --shop-dark: #4E8A5B; --shop-light: #D4EBD9;
+  --ing: #8E7CC3; --ing-dark: #6F5DA8; --ing-light: #DFD8F0;
+  --set: #5AA8C4; --set-dark: #4489A1; --set-light: #D4E8F0;
+  --bg: #FAF4EA; --bg-alt: #F3EAD8; --card: #FFFCF5;
+  --border: #D9CDB5; --border-dark: #B8A88C;
+  --text: #2D2419; --text-secondary: #6B5D4A; --text-tertiary: #A09382;
+  --pixel-shadow: #C4B496; --pixel-shadow-dark: #A89878;
+  --accent: #E8654E; --success: #6BAA75; --danger: #E8654E;
+  --sidebar-w: 240px;
+  --px: 'Press Start 2P', monospace;
+  --display: 'ZCOOL KuaiLe', 'Noto Sans SC', sans-serif;
+  --body: 'Noto Sans SC', -apple-system, sans-serif;
+  --shadow: 4px 4px 0 var(--pixel-shadow);
+  --shadow-lg: 6px 6px 0 var(--pixel-shadow-dark);
+  --shadow-sm: 2px 2px 0 var(--pixel-shadow);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:var(--body);background:var(--bg);background-image:linear-gradient(rgba(184,168,140,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(184,168,140,0.07) 1px,transparent 1px);background-size:8px 8px;color:var(--text);font-size:14px;line-height:1.6;}
+[v-cloak]{display:none!important;}
+
+.app{display:flex;min-height:100vh;}
+
+/* ===== Sidebar ===== */
+.sidebar{width:var(--sidebar-w);background:#2D2419;border-right:4px solid var(--border-dark);padding:20px 0;flex-shrink:0;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;overflow-y:auto;}
+.sidebar-brand{padding:0 20px 16px;border-bottom:3px solid #4A3F35;}
+.sidebar-brand h1{font-family:var(--display);font-size:20px;font-weight:400;color:#FAF4EA;text-shadow:2px 2px 0 #C45A3E;cursor:pointer;}
+.sidebar-brand p{font-family:var(--px);font-size:8px;color:#A09382;margin-top:6px;}
+.env-badge{display:inline-block;font-family:var(--px);font-size:7px;padding:3px 6px;margin-top:8px;border:2px solid;text-align:center;letter-spacing:1px;}
+.env-dev{color:#E8A82C;border-color:#E8A82C;background:#3D3225;}
+.nav-section{font-family:var(--px);font-size:7px;color:#6B5D4A;padding:14px 20px 6px;letter-spacing:1px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:12px 20px;cursor:pointer;font-size:14px;font-weight:500;color:#A09382;border-left:4px solid transparent;transition:all .12s steps(4);position:relative;}
+.nav-item:hover{background:#3D3225;color:#FAF4EA;border-left-color:#6B5D4A;}
+.nav-item.active{color:#FAF4EA;background:#3D3225;}
+.nav-item.active.dashboard{border-left-color:var(--accent);}
+.nav-item.active.cook{border-left-color:var(--cook);}
+.nav-item.active.order{border-left-color:var(--order);}
+.nav-item.active.diary{border-left-color:var(--diary);}
+.nav-item.active.shopping{border-left-color:var(--shop);}
+.nav-item.active.ingredients{border-left-color:var(--ing);}
+.nav-item.active.settings{border-left-color:var(--set);}
+.nav-item.active.about{border-left-color:#A09382;}
+.nav-icon{width:20px;text-align:center;font-size:16px;}
+.sidebar-footer{margin-top:auto;padding:14px 20px;border-top:3px solid #4A3F35;}
+.user-chip{display:flex;align-items:center;gap:8px;color:#FAF4EA;font-size:13px;margin-bottom:10px;cursor:pointer;}
+.user-chip .avatar{width:28px;height:28px;background:var(--cook);display:flex;align-items:center;justify-content:center;border-radius:4px;font-family:var(--px);font-size:8px;}
+.logout-btn{width:100%;padding:6px;background:#3D3225;border:2px solid #4A3F35;color:#E8654E;font-family:var(--px);font-size:8px;cursor:pointer;border-radius:2px;}
+.logout-btn:hover{border-color:#E8654E;}
+.tech-badge{font-family:var(--px);font-size:7px;color:#6B5D4A;display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;}
+.tech-badge span{background:#3D3225;padding:3px 5px;border:1px solid #4A3F35;}
+
+/* ===== Main ===== */
+.main{flex:1;padding:24px 32px;max-width:1100px;margin:0 auto;width:100%;}
+.page-title{font-family:var(--display);font-size:22px;font-weight:400;margin-bottom:4px;color:var(--text);text-shadow:2px 2px 0 var(--cook-light);}
+.page-sub{font-size:12px;color:var(--text-secondary);margin-bottom:20px;font-family:var(--px);font-size:8px;line-height:1.8;}
+.breadcrumb{font-family:var(--px);font-size:7px;color:var(--text-tertiary);margin-bottom:14px;display:flex;gap:6px;align-items:center;}
+.breadcrumb a{color:var(--diary-dark);text-decoration:none;cursor:pointer;}
+.breadcrumb a:hover{text-decoration:underline;}
+
+.card{background:var(--card);border:3px solid var(--border-dark);border-radius:4px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px;}
+.card-body{padding:20px;}
+.card-title{font-family:var(--display);font-size:16px;font-weight:400;margin-bottom:12px;}
+.card-header-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:12px;flex-wrap:wrap;}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 20px;border-radius:4px;font-size:14px;font-weight:700;cursor:pointer;transition:all .08s steps(2);border:3px solid var(--text);box-shadow:3px 3px 0 var(--text);font-family:var(--body);}
+.btn:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--text);}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.btn-primary{background:var(--diary);color:#fff;border-color:var(--diary-dark);box-shadow:3px 3px 0 var(--diary-dark);}
+.btn-primary:active{box-shadow:0 0 0 var(--diary-dark);}
+.btn-cook{background:var(--cook);color:#fff;border-color:var(--cook-dark);box-shadow:3px 3px 0 var(--cook-dark);}
+.btn-cook:active{box-shadow:0 0 0 var(--cook-dark);}
+.btn-order{background:var(--order);color:#fff;border-color:var(--order-dark);box-shadow:3px 3px 0 var(--order-dark);}
+.btn-order:active{box-shadow:0 0 0 var(--order-dark);}
+.btn-shop{background:var(--shop);color:#fff;border-color:var(--shop-dark);box-shadow:3px 3px 0 var(--shop-dark);}
+.btn-shop:active{box-shadow:0 0 0 var(--shop-dark);}
+.btn-ing{background:var(--ing);color:#fff;border-color:var(--ing-dark);box-shadow:3px 3px 0 var(--ing-dark);}
+.btn-ing:active{box-shadow:0 0 0 var(--ing-dark);}
+.btn-set{background:var(--set);color:#fff;border-color:var(--set-dark);box-shadow:3px 3px 0 var(--set-dark);}
+.btn-outline{background:var(--card);border:3px solid var(--border-dark);color:var(--text-secondary);box-shadow:3px 3px 0 var(--border-dark);}
+.btn-outline:active{box-shadow:0 0 0 var(--border-dark);}
+.btn-outline.active{background:var(--text);color:var(--bg);border-color:var(--text);box-shadow:3px 3px 0 var(--pixel-shadow-dark);}
+.btn-danger{background:var(--danger);color:#fff;border-color:#b04330;box-shadow:3px 3px 0 #b04330;}
+.btn-lg{padding:14px 28px;font-size:15px;width:100%;font-family:var(--display);}
+.btn-sm{padding:6px 12px;font-size:12px;border-width:2px;box-shadow:2px 2px 0 var(--text);}
+.btn-xs{padding:3px 8px;font-size:11px;border-width:2px;box-shadow:2px 2px 0 var(--pixel-shadow);}
+.btn-block{width:100%;}
+
+.badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:0;font-family:var(--px);font-size:8px;font-weight:400;border:2px solid currentColor;text-transform:uppercase;}
+.badge-cook{background:var(--cook-light);color:var(--cook-dark);}
+.badge-order{background:var(--order-light);color:var(--order-dark);}
+.badge-shop{background:var(--shop-light);color:var(--shop-dark);}
+.badge-ing{background:var(--ing-light);color:var(--ing-dark);}
+.badge-gray{background:var(--bg-alt);color:var(--text-secondary);}
+.badge-green{background:#D4EBD9;color:var(--success);}
+.badge-danger{background:#FBE5E0;color:#b04330;}
+.badge-warn{background:var(--order-light);color:var(--order-dark);}
+
+.chip{display:inline-flex;align-items:center;gap:4px;padding:6px 14px;border-radius:4px;font-size:13px;cursor:pointer;border:2px solid var(--border-dark);background:var(--card);transition:all .08s steps(2);box-shadow:2px 2px 0 var(--pixel-shadow);}
+.chip:hover{border-color:var(--text);transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--pixel-shadow);}
+button.chip{font-family:inherit;outline:none;}
+.chip.active{background:var(--text);color:var(--bg);border-color:var(--text);}
+.chip-group{display:flex;flex-wrap:wrap;gap:8px;}
+
+/* v2.1 偏好档案：实时星座/属相小字 */
+.live-zodiac-hint{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.mini-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-family:var(--px);font-size:8px;border:2px solid currentColor;}
+.mini-cook{background:var(--cook-light);color:var(--cook-dark);}
+.mini-order{background:var(--order-light);color:var(--order-dark);}
+.hint-sub{font-size:10px;color:var(--text-tertiary);margin-left:4px;}
+
+/* 菜系 chip + 自定义样式 */
+.chip.cuisine{font-size:12px;padding:5px 10px;}
+.chip.cuisine.other-add{background:transparent;border-style:dashed;color:var(--text-secondary);}
+.cuisine-other-input{max-width:160px !important;padding:6px 10px;font-size:12px;}
+.sel-cuisine-pill{display:inline-flex;align-items:center;gap:4px;margin-right:6px;padding:2px 8px;border-radius:2px;background:var(--shop-light);color:var(--shop-dark);border:1.5px solid var(--shop-dark);font-size:11px;}
+.pill-x{background:transparent;border:none;cursor:pointer;color:var(--shop-dark);font-size:10px;padding:0 0 0 4px;line-height:1;}
+.pill-x:hover{color:#b04330;}
+
+/* 忌口三级树样式 */
+.dislike-tree{border:2px solid var(--border-dark);border-radius:4px;background:var(--bg-alt);}
+.tree-L1{border-bottom:2px solid var(--border);}
+.tree-L1:last-child{border-bottom:none;}
+.tree-summary-L1{list-style:none;padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;font-family:var(--px);font-size:10px;font-weight:600;background:var(--card);}
+.tree-summary-L1::-webkit-details-marker{display:none;}
+.tree-summary-L1:hover{background:var(--bg-alt);}
+.tree-L2-wrap{padding:4px 14px 12px 28px;}
+.tree-L2{border-top:1.5px dashed var(--border);}
+.tree-L2:first-child{border-top:none;}
+.tree-summary-L2{list-style:none;padding:8px 4px;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);}
+.tree-summary-L2::-webkit-details-marker{display:none;}
+.tree-summary-L2:hover{color:var(--text);}
+.tree-arrow{display:inline-block;width:12px;font-size:10px;color:var(--text-tertiary);transition:transform .1s;}
+details[open] > .tree-summary-L1 > .tree-arrow,
+details[open] > .tree-summary-L2 > .tree-arrow{transform:rotate(90deg);}
+.tree-name{flex:1;}
+.tree-count-badge{display:inline-block;padding:1px 7px;border-radius:10px;background:var(--cook-light);color:var(--cook-dark);font-family:var(--px);font-size:8px;border:1.5px solid var(--cook-dark);}
+.tree-count-badge.small{background:var(--bg-alt);color:var(--text-secondary);border-color:var(--border-dark);}
+.leaf-group{padding:6px 4px 10px 14px;}
+.chip.leaf{font-size:11px;padding:4px 10px;}
+.chip.leaf.active{background:var(--order-dark);color:var(--order-light);border-color:var(--order-dark);}
+.custom-other-wrap{padding:6px 4px 10px 14px;}
+.custom-other-input{max-width:260px !important;padding:6px 10px;font-size:12px;}
+.chip .remove{margin-left:4px;cursor:pointer;font-size:10px;color:inherit;opacity:.7;}
+.chip .remove:hover{opacity:1;color:#b04330;}
+
+
+.section-label{font-family:var(--px);font-size:8px;font-weight:400;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;}
+.divider{height:0;border:none;border-top:2px dashed var(--border);margin:16px 0;}
+
+.input-field{width:100%;padding:10px 14px;border:3px solid var(--border-dark);border-radius:4px;font-size:14px;outline:none;background:var(--card);transition:all .08s steps(2);box-shadow:inset 2px 2px 0 rgba(184,168,140,0.15);font-family:var(--body);}
+.input-field:focus{border-color:var(--cook);box-shadow:inset 2px 2px 0 rgba(184,168,140,0.15),0 0 0 3px var(--cook-light);}
+.input-label{font-family:var(--px);font-size:8px;font-weight:400;margin-bottom:8px;display:block;color:var(--text-secondary);}
+.input-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;}
+.input-help{font-size:11px;color:var(--text-tertiary);margin-top:4px;}
+textarea.input-field{min-height:80px;resize:vertical;}
+select.input-field{cursor:pointer;appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--text) 50%),linear-gradient(135deg,var(--text) 50%,transparent 50%);background-position:calc(100% - 18px) 50%,calc(100% - 12px) 50%;background-size:6px 6px,6px 6px;background-repeat:no-repeat;padding-right:36px;}
+
+.tag{display:inline-block;padding:4px 8px;border-radius:0;font-size:12px;background:var(--bg-alt);color:var(--text-secondary);margin:2px;border:1px solid var(--border);}
+
+/* ===== Auth Page ===== */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+.auth-card{width:100%;max-width:420px;background:var(--card);border:4px solid var(--text);border-radius:6px;box-shadow:var(--shadow-lg);overflow:hidden;}
+.auth-header{background:var(--bg-alt);padding:24px;text-align:center;border-bottom:3px solid var(--border-dark);}
+.auth-header h1{font-family:var(--display);font-size:26px;color:var(--text);text-shadow:2px 2px 0 var(--cook-light);}
+.auth-header p{font-family:var(--px);font-size:8px;color:var(--text-secondary);margin-top:6px;}
+.auth-tabs{display:flex;border-bottom:3px solid var(--border-dark);}
+.auth-tab{flex:1;padding:12px;text-align:center;font-family:var(--display);font-size:14px;cursor:pointer;color:var(--text-secondary);background:var(--bg-alt);}
+.auth-tab.active{background:var(--card);color:var(--text);border-bottom:3px solid var(--cook);margin-bottom:-3px;}
+.auth-body{padding:24px;}
+.auth-field{margin-bottom:14px;}
+.auth-error{background:#FBE5E0;border:2px solid #e2a89a;color:#b04330;padding:10px 14px;border-radius:3px;font-size:13px;margin-bottom:14px;}
+.auth-footer{padding:12px 24px;border-top:2px dashed var(--border);font-family:var(--px);font-size:7px;color:var(--text-tertiary);line-height:1.8;background:var(--bg-alt);}
+.auth-links{margin-top:12px;text-align:center;font-size:12px;color:var(--text-secondary);}
+.auth-links a{color:var(--diary-dark);cursor:pointer;text-decoration:none;}
+
+/* ===== Cook Mode ===== */
+.cook-layout{display:flex;gap:20px;align-items:flex-start;}
+.cook-left{width:260px;flex-shrink:0;position:sticky;top:24px;}
+.cook-right{flex:1;min-width:0;display:flex;flex-direction:column;gap:16px;}
+@media (max-width:768px){.cook-layout{flex-direction:column;}.cook-left{width:100%;position:static;}}
+
+.fridge{background:linear-gradient(180deg,#F0F4F8,#E2EAF0);border:4px solid var(--text);border-radius:8px;box-shadow:6px 6px 0 var(--pixel-shadow-dark);overflow:hidden;position:relative;}
+.fridge-top{background:var(--text);color:var(--bg);padding:6px 12px;display:flex;align-items:center;justify-content:space-between;font-family:var(--px);font-size:8px;}
+.fridge-top .fridge-temp{background:var(--cook);color:#fff;padding:1px 5px;border-radius:2px;}
+.fridge-body{padding:8px;display:flex;flex-direction:column;min-height:120px;max-height:360px;overflow-y:auto;}
+.fridge-shelf{border-bottom:2px dashed var(--border);padding:4px 0 8px;display:flex;flex-wrap:wrap;gap:4px;align-items:flex-start;}
+.fridge-shelf:last-child{border-bottom:none;}
+.fridge-empty{text-align:center;padding:20px 0;font-size:12px;color:var(--text-tertiary);}
+.fridge-empty .icon{font-size:28px;margin-bottom:4px;}
+.fridge-foot{background:var(--bg-alt);border-top:2px solid var(--border);padding:6px 8px;}
+.fridge-add-bar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.fridge-add-bar .input-field{flex:1;min-width:80px;padding:6px 10px;font-size:12px;border-width:2px;}
+.fridge-add-bar select{padding:6px;border:2px solid var(--border-dark);border-radius:3px;font-size:11px;background:var(--card);font-family:var(--body);}
+
+.ingredient-cloud{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
+.ingredient-tag{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:4px;font-size:13px;cursor:pointer;transition:all .08s steps(2);border:2px solid var(--border-dark);box-shadow:2px 2px 0 var(--pixel-shadow);}
+.ingredient-tag.vegetable{background:#D4EBD9;color:#3D6B4E;border-color:#8BAA75;}
+.ingredient-tag.meat{background:var(--cook-light);color:var(--cook-dark);border-color:var(--cook);}
+.ingredient-tag.staple{background:var(--order-light);color:var(--order-dark);border-color:var(--order);}
+.ingredient-tag.seasoning{background:var(--diary-light);color:var(--diary-dark);border-color:var(--diary);}
+.ingredient-tag.aquatic{background:#D9E8F0;color:#3D566B;border-color:#7A98AB;}
+.ingredient-tag.dairy{background:#F0E8F5;color:#6B4E7A;border-color:#A88FB8;}
+.ingredient-tag.other{background:#ECE6D8;color:#6B5D4A;border-color:#B8A88C;}
+.ingredient-tag.selected{outline:3px solid var(--text);outline-offset:1px;transform:translate(-1px,-1px);}
+.ingredient-tag.used-up{opacity:.5;text-decoration:line-through;filter:grayscale(.5);}
+.ingredient-tag.expired{background:#FBE5E0!important;color:#b04330!important;border-color:#e2a89a!important;}
+.ingredient-tag .remove{font-size:10px;opacity:.6;}
+
+.input-bar{display:flex;gap:8px;margin-bottom:16px;}
+.input-bar .input-field{flex:1;}
+
+.recipe-card{background:var(--card);border:3px solid var(--border-dark);border-radius:4px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:12px;}
+.recipe-card-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;gap:12px;flex-wrap:wrap;}
+.recipe-card-title{font-family:var(--display);font-size:16px;font-weight:400;}
+.recipe-card-meta{display:flex;gap:8px;font-size:12px;color:var(--text-secondary);flex-wrap:wrap;}
+.recipe-card-meta span{border:1px solid var(--border);padding:1px 5px;}
+.recipe-card-detail{padding:0 16px 14px;}
+.recipe-steps{font-size:13px;color:var(--text-secondary);list-style:none;}
+.recipe-steps li{margin:4px 0;padding-left:20px;position:relative;}
+.recipe-steps li::before{content:'▸';position:absolute;left:0;color:var(--cook);}
+.recipe-matched{color:var(--success);}
+.recipe-missing{color:var(--accent);}
+.cache-id{font-family:var(--px);font-size:7px;color:var(--text-tertiary);margin-top:8px;word-break:break-all;}
+
+/* ===== Order Mode ===== */
+.order-layout{display:flex;gap:20px;align-items:flex-start;}
+.order-left{width:300px;flex-shrink:0;position:sticky;top:24px;}
+.order-right{flex:1;min-width:0;display:flex;flex-direction:column;gap:16px;}
+@media (max-width:768px){.order-layout{flex-direction:column;}.order-left{width:100%;position:static;}}
+
+.fortune-card{perspective:1000px;cursor:pointer;margin-bottom:16px;}
+.fortune-inner{position:relative;width:100%;min-height:160px;transition:transform .6s steps(8);transform-style:preserve-3d;}
+.fortune-card.flipped .fortune-inner{transform:rotateY(180deg);}
+.fortune-front,.fortune-back{position:absolute;inset:0;border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;backface-visibility:hidden;padding:20px;text-align:center;}
+.fortune-front{background:linear-gradient(135deg,var(--order),var(--order-dark));color:#fff;border:4px solid var(--text);box-shadow:4px 4px 0 var(--pixel-shadow-dark);}
+.fortune-back{background:var(--card);border:4px solid var(--order);transform:rotateY(180deg);box-shadow:4px 4px 0 var(--order-dark);}
+
+.chat-container{display:flex;flex-direction:column;gap:8px;min-height:220px;max-height:360px;overflow-y:auto;padding:4px;}
+.chat-bubble{max-width:80%;padding:10px 14px;border-radius:4px;font-size:14px;border-width:3px;border-style:solid;}
+.chat-bubble.ai{background:var(--card);border-color:var(--border-dark);align-self:flex-start;border-radius:4px 4px 4px 0;box-shadow:2px 2px 0 var(--pixel-shadow);}
+.chat-bubble.user{background:var(--diary);color:#fff;border-color:var(--diary-dark);align-self:flex-end;border-radius:4px 4px 0 4px;box-shadow:2px 2px 0 var(--diary-dark);}
+
+.chat-options{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+
+/* ===== Diary ===== */
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+@media (max-width:640px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}}
+@media (min-width:641px) and (max-width:900px){.grid-4{grid-template-columns:repeat(2,1fr);}}
+
+.stat-card{background:var(--card);border:3px solid var(--border-dark);border-radius:4px;padding:16px;box-shadow:var(--shadow);text-align:center;}
+.stat-num{font-family:var(--display);font-size:30px;font-weight:400;text-shadow:2px 2px 0 rgba(0,0,0,0.06);}
+.stat-label{font-family:var(--px);font-size:8px;color:var(--text-secondary);margin-top:4px;}
+.stat-card.cook .stat-num{color:var(--cook);}
+.stat-card.order .stat-num{color:var(--order);}
+.stat-card.save .stat-num{color:var(--success);}
+.stat-card.streak .stat-num{color:var(--accent);}
+
+.heatmap{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:12px;}
+.heatmap-day{aspect-ratio:1;border-radius:0;background:var(--bg-alt);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-tertiary);border:1px solid var(--border);}
+.heatmap-day.cook{background:var(--cook);color:#fff;border-color:var(--cook-dark);}
+.heatmap-day.order{background:var(--diary);color:#fff;border-color:var(--diary-dark);}
+.heatmap-day.both{background:linear-gradient(135deg,var(--cook) 50%,var(--diary) 50%);color:#fff;border-color:var(--text);}
+.heatmap-day.today{box-shadow:0 0 0 3px var(--text);z-index:1;}
+
+.diary-entry{display:flex;gap:12px;padding:12px;border-bottom:2px dashed var(--border);align-items:flex-start;}
+.diary-entry:last-child{border-bottom:none;}
+.diary-entry .emoji{font-size:22px;flex-shrink:0;}
+.diary-entry .info{flex:1;min-width:0;}
+.diary-entry .info-title{font-family:var(--display);font-size:15px;font-weight:400;}
+.diary-entry .meta{font-family:var(--px);font-size:7px;color:var(--text-tertiary);margin-top:3px;line-height:1.6;}
+.diary-entry .rating{font-size:13px;flex-shrink:0;}
+
+.diary-filter{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+
+.empty-state{text-align:center;padding:40px 20px;color:var(--text-tertiary);}
+.empty-state .icon{font-size:48px;margin-bottom:8px;filter:drop-shadow(2px 2px 0 var(--pixel-shadow));}
+.empty-state p{font-family:var(--display);font-size:16px;}
+.empty-state .sub{font-size:12px;color:var(--text-tertiary);margin-top:4px;font-family:var(--body);}
+.empty-state .btn{margin-top:14px;}
+
+/* ===== Loading ===== */
+.loading{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-bottom-color:transparent;border-radius:50%;animation:spin 0.8s steps(8) infinite;vertical-align:middle;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ===== Toast ===== */
+.toast{position:fixed;top:24px;right:24px;background:var(--text);color:var(--bg);padding:12px 20px;border:3px solid var(--border-dark);border-radius:4px;font-family:var(--px);font-size:9px;z-index:9999;box-shadow:4px 4px 0 rgba(0,0,0,0.15);opacity:0;transform:translateY(-12px);transition:all .2s steps(3);pointer-events:none;max-width:320px;line-height:1.6;}
+.toast.show{opacity:1;transform:translateY(0);}
+.toast.success{background:#2D4030;border-color:var(--success);}
+.toast.error{background:#4D2E28;border-color:var(--danger);}
+
+/* ===== Bottom Tab (Mobile) ===== */
+.bottom-tab{display:none;position:fixed;bottom:0;left:0;right:0;background:#2D2419;border-top:4px solid var(--border-dark);z-index:100;height:60px;}
+.bottom-tab-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;font-size:9px;color:#A09382;font-family:var(--px);padding:2px;}
+.bottom-tab-item.active{color:#FAF4EA;}
+.bottom-tab-item.active.dashboard{color:var(--accent);}
+.bottom-tab-item.active.cook{color:var(--cook);}
+.bottom-tab-item.active.order{color:var(--order);}
+.bottom-tab-item.active.diary{color:var(--diary);}
+.bottom-tab-item.active.shopping{color:var(--shop);}
+.bottom-tab-icon{font-size:18px;}
+
+@media (max-width:768px){
+  .sidebar{display:none;}
+  .bottom-tab{display:flex;}
+  .main{padding:16px;padding-bottom:76px;}
+}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:12px;}
+::-webkit-scrollbar-track{background:var(--bg-alt);}
+::-webkit-scrollbar-thumb{background:var(--border-dark);border:2px solid var(--bg-alt);border-radius:0;}
+::-webkit-scrollbar-thumb:hover{background:var(--text-tertiary);}
+
+/* ===== Dashboard ===== */
+.quick-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;}
+.quick-card{background:var(--card);border:3px solid var(--border-dark);border-radius:4px;box-shadow:var(--shadow);padding:16px;text-align:center;cursor:pointer;transition:all .12s steps(3);}
+.quick-card:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--pixel-shadow-dark);}
+.quick-card:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--pixel-shadow);}
+.quick-card .emoji{font-size:32px;margin-bottom:6px;}
+.quick-card .label{font-family:var(--display);font-size:15px;}
+.quick-card .desc{font-size:11px;color:var(--text-tertiary);margin-top:2px;}
+.quick-card.cook{border-color:var(--cook-dark);}
+.quick-card.cook:hover{background:var(--cook-light);}
+.quick-card.order{border-color:var(--order-dark);}
+.quick-card.order:hover{background:var(--order-light);}
+.quick-card.shop{border-color:var(--shop-dark);}
+.quick-card.shop:hover{background:var(--shop-light);}
+.quick-card.ing{border-color:var(--ing-dark);}
+.quick-card.ing:hover{background:var(--ing-light);}
+
+.progress-bar{height:10px;background:var(--bg-alt);border:2px solid var(--border);position:relative;overflow:hidden;}
+.progress-fill{height:100%;transition:width .3s steps(6);}
+
+/* ===== Shopping List ===== */
+.shopping-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-bottom:2px dashed var(--border);}
+.shopping-item:last-child{border-bottom:none;}
+.shopping-item.checked{opacity:.55;}
+.shopping-item.checked .si-name{text-decoration:line-through;color:var(--text-tertiary);}
+.si-check{width:20px;height:20px;cursor:pointer;accent-color:var(--shop-dark);flex-shrink:0;}
+.si-name{flex:1;font-weight:500;min-width:0;word-break:break-word;}
+.si-meta{font-family:var(--px);font-size:7px;color:var(--text-tertiary);display:flex;gap:6px;flex-wrap:wrap;margin-top:2px;}
+.si-actions{display:flex;gap:4px;flex-shrink:0;}
+
+/* ===== Ingredients Manager ===== */
+.ing-table-head{display:grid;grid-template-columns:2fr 1fr 1.2fr 1fr 1.2fr;gap:8px;padding:8px 12px;background:var(--bg-alt);border-bottom:2px solid var(--border-dark);font-family:var(--px);font-size:7px;color:var(--text-secondary);align-items:center;}
+.ing-row{display:grid;grid-template-columns:2fr 1fr 1.2fr 1fr 1.2fr;gap:8px;padding:10px 12px;border-bottom:2px dashed var(--border);align-items:center;}
+.ing-row:last-child{border-bottom:none;}
+.ing-row.used-up,.ing-row.expired{opacity:.6;}
+.ing-row.expired{background:#FBE5E0;}
+.ing-status{display:flex;gap:4px;flex-wrap:wrap;}
+@media (max-width:768px){
+  .ing-table-head{display:none;}
+  .ing-row{grid-template-columns:1fr 1fr;grid-template-areas:
+    "name name"
+    "cat qty"
+    "exp status"
+    "act act";}
+  .ing-row > *:nth-child(1){grid-area:name;}
+  .ing-row > *:nth-child(2){grid-area:cat;}
+  .ing-row > *:nth-child(3){grid-area:qty;}
+  .ing-row > *:nth-child(4){grid-area:exp;}
+  .ing-row > *:nth-child(5){grid-area:act;}
+}
+
+/* ===== Settings ===== */
+.settings-section{margin-bottom:24px;}
+.settings-section:last-child{margin-bottom:0;}
+.settings-section-title{font-family:var(--display);font-size:16px;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.form-group{margin-bottom:14px;}
+.form-grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+@media (max-width:640px){.form-grid-2{grid-template-columns:1fr;}}
+
+.profile-head{display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap;}
+.profile-avatar{width:72px;height:72px;border-radius:8px;background:linear-gradient(135deg,var(--cook),var(--order));display:flex;align-items:center;justify-content:center;font-family:var(--px);font-size:22px;color:#fff;box-shadow:var(--shadow);border:3px solid var(--text);}
+.profile-meta .nick{font-family:var(--display);font-size:20px;}
+.profile-meta .sub{font-family:var(--px);font-size:8px;color:var(--text-secondary);margin-top:4px;line-height:1.8;}
+
+/* ===== About ===== */
+.about-timeline{position:relative;padding-left:24px;border-left:3px dashed var(--border-dark);margin-left:8px;}
+.about-timeline::before{content:'';position:absolute;left:-7px;top:0;width:11px;height:11px;border-radius:50%;background:var(--cook);border:2px solid var(--text);}
+.timeline-item{margin-bottom:18px;position:relative;}
+.timeline-item::before{content:'';position:absolute;left:-28px;top:6px;width:9px;height:9px;border-radius:50%;background:var(--card);border:2px solid var(--border-dark);}
+.timeline-date{font-family:var(--px);font-size:7px;color:var(--text-tertiary);}
+.timeline-title{font-family:var(--display);font-size:14px;margin-top:2px;}
+.timeline-desc{font-size:12px;color:var(--text-secondary);margin-top:2px;}
+
+.stack-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;}
+.stack-item{background:var(--bg-alt);border:2px solid var(--border);padding:10px;text-align:center;border-radius:3px;}
+.stack-item .name{font-family:var(--display);font-size:13px;}
+.stack-item .ver{font-family:var(--px);font-size:7px;color:var(--text-tertiary);margin-top:2px;}
+
+/* ===== Modal ===== */
+.modal-mask{position:fixed;inset:0;background:rgba(45,36,25,.6);display:flex;align-items:center;justify-content:center;z-index:500;padding:16px;}
+.modal{background:var(--card);border:4px solid var(--text);border-radius:6px;box-shadow:var(--shadow-lg);width:100%;max-width:480px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;}
+.modal-header{background:var(--bg-alt);padding:14px 18px;border-bottom:3px solid var(--border-dark);display:flex;justify-content:space-between;align-items:center;}
+.modal-header h3{font-family:var(--display);font-size:16px;}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-secondary);line-height:1;}
+.modal-body{padding:18px;overflow-y:auto;flex:1;}
+.modal-footer{padding:12px 18px;border-top:2px dashed var(--border);background:var(--bg-alt);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;}
+
+/* ===== Preference bars ===== */
+.pref-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;}
+.pref-cell{background:var(--bg-alt);border:2px solid var(--border);padding:10px;border-radius:3px;display:flex;flex-direction:column;align-items:center;}
+.pref-cell .name{font-family:var(--display);font-size:13px;margin-bottom:6px;}
+.pref-bar{width:100%;height:8px;background:#fff;border:1px solid var(--border);position:relative;overflow:hidden;}
+.pref-fill{height:100%;}
+.pref-cell .meta{font-family:var(--px);font-size:7px;color:var(--text-tertiary);margin-top:4px;}
+
+/* ===== Tab bar inside pages ===== */
+.tab-bar{display:flex;border-bottom:3px solid var(--border-dark);margin-bottom:14px;overflow-x:auto;}
+.tab-bar .tab{padding:10px 18px;font-family:var(--display);font-size:13px;cursor:pointer;color:var(--text-secondary);border-bottom:3px solid transparent;margin-bottom:-3px;white-space:nowrap;}
+.tab-bar .tab.active{color:var(--text);border-bottom-color:var(--cook);}
+
+/* ===== Filter bar ===== */
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;}
+.filter-bar .spacer{flex:1;}
+.search-input{flex:1;min-width:180px;}
+
+.truncate{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* Fade transitions */
+.fade-enter-active,.fade-leave-active{transition:opacity .2s steps(3);}
+.fade-enter-from,.fade-leave-to{opacity:0;}
+</style>
+</head>
+<body>
+<div id="app" v-cloak>
+
+  <!-- ============================== -->
+  <!-- 未登录：登录 / 注册卡片 -->
+  <!-- ============================== -->
+  <div v-if="!me && (route.name==='login' || route.name==='register')" class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-header">
+        <h1>🍳 食光 FoodTime</h1>
+        <p>独居青年吃饭决策助手 · v2.1</p>
+      </div>
+      <div class="auth-tabs">
+        <div class="auth-tab" :class="{active:route.name==='login'}" @click="navigate('/login')">登录</div>
+        <div class="auth-tab" :class="{active:route.name==='register'}" @click="navigate('/register')">注册</div>
+      </div>
+      <div class="auth-body">
+        <div v-if="authError" class="auth-error">{{ authError }}</div>
+
+        <div v-if="route.name==='login'">
+          <div class="auth-field">
+            <label class="input-label">用户名</label>
+            <input class="input-field" v-model="loginForm.username" @keyup.enter="submitLogin" placeholder="3-50位中英数字下划线" autocomplete="username">
+          </div>
+          <div class="auth-field">
+            <label class="input-label">密码</label>
+            <input class="input-field" type="password" v-model="loginForm.password" @keyup.enter="submitLogin" placeholder="至少 6 位" autocomplete="current-password">
+          </div>
+          <button class="btn btn-primary btn-lg" :disabled="authLoading" @click="submitLogin">
+            <span v-if="authLoading" class="loading"></span> {{ authLoading ? '登录中...' : '登录 FoodTime' }}
+          </button>
+          <div class="auth-links">还没有账户？<a @click="navigate('/register')">去注册 →</a></div>
+        </div>
+
+        <div v-else>
+          <div class="auth-field">
+            <label class="input-label">用户名 <span style="color:var(--accent)">*</span></label>
+            <input class="input-field" v-model="regForm.username" placeholder="3-50位中英数字下划线" autocomplete="username">
+          </div>
+          <div class="auth-field">
+            <label class="input-label">手机号（选填）</label>
+            <input class="input-field" v-model="regForm.phone" placeholder="11位中国大陆手机号" autocomplete="tel">
+          </div>
+          <div class="auth-field">
+            <label class="input-label">密码 <span style="color:var(--accent)">*</span></label>
+            <input class="input-field" type="password" v-model="regForm.password" placeholder="至少 6 位" autocomplete="new-password">
+          </div>
+          <button class="btn btn-cook btn-lg" :disabled="authLoading" @click="submitRegister">
+            <span v-if="authLoading" class="loading"></span> {{ authLoading ? '创建账户中...' : '创建账户并登录' }}
+          </button>
+          <div class="auth-links">已有账户？<a @click="navigate('/login')">返回登录 →</a></div>
+        </div>
+      </div>
+      <div class="auth-footer">
+        // 后端 FastAPI 0.115 · MySQL 8.0 · JWT 双 Token<br>
+        // 访问 /docs 查看所有 API 文档（需后端 DEBUG=true）
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================== -->
+  <!-- 未登录但访问其他页面 → 临时占位（由 onMounted 跳转，避免闪烁） -->
+  <!-- ============================== -->
+  <div v-else-if="!me" class="auth-wrap">
+    <div class="auth-card" style="text-align:center;padding:36px 24px;">
+      <div class="loading" style="width:24px;height:24px;color:var(--cook);"></div>
+      <div style="margin-top:12px;font-family:var(--display);">正在跳转到登录页...</div>
+      <div style="margin-top:8px;font-size:12px;color:var(--text-secondary);">如果未自动跳转，请 <a style="color:var(--diary-dark);cursor:pointer;" @click="navigate('/login')">点此登录</a></div>
+    </div>
+  </div>
+
+  <!-- ============================== -->
+  <!-- 已登录：侧边栏 + 主内容 -->
+  <!-- ============================== -->
+  <div v-else class="app">
+    <!-- Sidebar Desktop -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <h1 @click="navigate('/dashboard')">食光 FoodTime</h1>
+        <p>v2.1 · 真实后端对接</p>
+        <div class="env-badge env-dev">{{ env.toUpperCase() }}</div>
+      </div>
+
+      <div class="nav-section">◆ 主菜单</div>
+      <div class="nav-item" :class="{active: route.name==='dashboard', dashboard:true}" @click="navigate('/dashboard')">
+        <span class="nav-icon">🏠</span> 仪表盘
+      </div>
+      <div class="nav-item" :class="{active: route.name==='cook', cook:true}" @click="navigate('/cook')">
+        <span class="nav-icon">🍳</span> Cook Mode
+      </div>
+      <div class="nav-item" :class="{active: route.name==='order', order:true}" @click="navigate('/order')">
+        <span class="nav-icon">🛵</span> Order Mode
+      </div>
+      <div class="nav-item" :class="{active: route.name==='diary', diary:true}" @click="navigate('/diary')">
+        <span class="nav-icon">📖</span> 美食日记
+      </div>
+
+      <div class="nav-section">◆ 管理</div>
+      <div class="nav-item" :class="{active: route.name==='shopping', shopping:true}" @click="navigate('/shopping')">
+        <span class="nav-icon">🛒</span> 购物单
+        <span v-if="shoppingPendingCount>0" class="badge badge-shop" style="margin-left:auto;">{{ shoppingPendingCount }}</span>
+      </div>
+      <div class="nav-item" :class="{active: route.name==='ingredients', ingredients:true}" @click="navigate('/ingredients')">
+        <span class="nav-icon">🧊</span> 食材库
+        <span v-if="expiredCount>0" class="badge badge-danger" style="margin-left:auto;">{{ expiredCount }} 过期</span>
+      </div>
+
+      <div class="nav-section">◆ 系统</div>
+      <div class="nav-item" :class="{active: route.name==='settings', settings:true}" @click="navigate('/settings')">
+        <span class="nav-icon">⚙️</span> 个人设置
+      </div>
+      <div class="nav-item" :class="{active: route.name==='about', about:true}" @click="navigate('/about')">
+        <span class="nav-icon">ℹ️</span> 关于 FoodTime
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="user-chip" @click="navigate('/settings')">
+          <div class="avatar">{{ (me.username || 'U').slice(0,1).toUpperCase() }}</div>
+          <div style="line-height:1.3;">
+            <div style="font-family:var(--display);font-size:13px;">{{ me.username }}</div>
+            <div style="font-family:var(--px);font-size:7px;color:#A09382;">菜谱配额 {{ (quota.LLM_RECIPES_QUOTA !== undefined) ? quota.LLM_RECIPES_QUOTA : '-' }}/{{ quota.LLM_RECIPES_TOTAL || '-' }}</div>
+          </div>
+        </div>
+        <button class="logout-btn" @click="logout">LOGOUT</button>
+        <div class="tech-badge">
+          <span>FastAPI</span><span>JWT</span><span>SQLAlchemy</span><span>LLM</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <!-- Breadcrumb -->
+      <div class="breadcrumb">
+        <a @click="navigate('/dashboard')">🏠</a>
+        <template v-if="route.name!=='dashboard'">
+          <span>/</span>
+          <template v-if="route.parentLabel">
+            <a @click="navigate(route.parentPath)">{{ route.parentLabel }}</a>
+            <span>/</span>
+          </template>
+          <span style="color:var(--text-secondary);">{{ route.label }}</span>
+        </template>
+      </div>
+
+      <!-- ======= Dashboard ======= -->
+      <section v-if="route.name==='dashboard'">
+        <div class="page-title">仪表盘 · 欢迎回来，{{ me.nickname || me.username }} 👋</div>
+        <div class="page-sub">今日概览 · 快捷入口 · 配额与进度</div>
+
+        <div class="grid-4" style="margin-bottom:16px;">
+          <div class="stat-card cook"><div class="stat-num">{{ stats?.cook_count_30d || 0 }}</div><div class="stat-label">30 天做饭</div></div>
+          <div class="stat-card order"><div class="stat-num">{{ stats?.takeout_count_30d || 0 }}</div><div class="stat-label">30 天外卖</div></div>
+          <div class="stat-card save"><div class="stat-num">¥{{ stats?.money_saved_30d || 0 }}</div><div class="stat-label">做饭节省</div></div>
+          <div class="stat-card streak"><div class="stat-num">{{ me.streak_days || 0 }}</div><div class="stat-label">连续活跃天</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <div class="card-title">⚡ 今日快捷入口</div>
+            <div class="quick-actions">
+              <div class="quick-card cook" @click="navigate('/cook')">
+                <div class="emoji">🍳</div><div class="label">自己做菜</div><div class="desc">冰箱食材 → LLM 菜谱</div>
+              </div>
+              <div class="quick-card order" @click="navigate('/order')">
+                <div class="emoji">🛵</div><div class="label">点外卖</div><div class="desc">运势 + 5 轮精准推荐</div>
+              </div>
+              <div class="quick-card shop" @click="navigate('/shopping')">
+                <div class="emoji">🛒</div><div class="label">购物单</div><div class="desc">待采购 {{ shoppingPendingCount }} 项</div>
+              </div>
+              <div class="quick-card ing" @click="navigate('/ingredients')">
+                <div class="emoji">🧊</div><div class="label">冰箱管理</div><div class="desc">{{ ingredients.length }} 项食材</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-body">
+              <div class="card-header-bar">
+                <div class="card-title" style="margin:0;">🔋 LLM 配额</div>
+                <button class="btn btn-outline btn-sm" @click="reloadMe">刷新</button>
+              </div>
+              <div style="margin-bottom:12px;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                  <span style="font-size:13px;">🍳 菜谱推荐</span>
+                  <span class="badge" :class="recipeQuotaPercent>90?'badge-danger':'badge-cook'">{{ quota.LLM_RECIPES_QUOTA || 0 }} / {{ quota.LLM_RECIPES_TOTAL || '-' }}</span>
+                </div>
+                <div class="progress-bar"><div class="progress-fill" :style="{width:recipeQuotaPercent+'%', background:'var(--cook)'}"></div></div>
+              </div>
+              <div style="margin-bottom:12px;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                  <span style="font-size:13px;">🃏 美食运势</span>
+                  <span class="badge badge-order">{{ quota.LLM_FORTUNE_QUOTA || 0 }} / {{ quota.LLM_FORTUNE_TOTAL || '-' }}</span>
+                </div>
+                <div class="progress-bar"><div class="progress-fill" :style="{width:fortuneQuotaPercent+'%', background:'var(--order)'}"></div></div>
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                  <span style="font-size:13px;">💬 外卖对话</span>
+                  <span class="badge" :class="chatQuotaPercent>90?'badge-danger':'badge-gray'">{{ quota.LLM_CHAT_QUOTA || 0 }} / {{ quota.LLM_CHAT_TOTAL || '-' }}</span>
+                </div>
+                <div class="progress-bar"><div class="progress-fill" :style="{width:chatQuotaPercent+'%', background:'var(--diary)'}"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-body">
+              <div class="card-header-bar">
+                <div class="card-title" style="margin:0;">⚠️ 提醒事项</div>
+              </div>
+              <div v-if="expiredCount===0 && expiringCount===0 && shoppingPendingCount===0" class="empty-state" style="padding:20px;">
+                <div class="icon">🏖️</div><p>暂无提醒</p><div class="sub">冰箱整洁，购物单清空，继续保持！</div>
+              </div>
+              <ul v-else style="list-style:none;display:flex;flex-direction:column;gap:10px;">
+                <li v-if="expiredCount>0" style="display:flex;gap:10px;align-items:center;cursor:pointer;" @click="navigate('/ingredients')">
+                  <span style="font-size:20px;">⚠️</span>
+                  <div style="flex:1;">
+                    <div style="font-weight:600;">{{ expiredCount }} 项食材已过期</div>
+                    <div style="font-size:12px;color:var(--text-tertiary);">建议立即清理或更换</div>
+                  </div>
+                  <span class="badge badge-danger">过期</span>
+                </li>
+                <li v-if="expiringCount>0" style="display:flex;gap:10px;align-items:center;cursor:pointer;" @click="navigate('/ingredients')">
+                  <span style="font-size:20px;">⏰</span>
+                  <div style="flex:1;">
+                    <div style="font-weight:600;">{{ expiringCount }} 项食材 3 天内过期</div>
+                    <div style="font-size:12px;color:var(--text-tertiary);">尽快消耗掉吧</div>
+                  </div>
+                  <span class="badge badge-warn">临期</span>
+                </li>
+                <li v-if="shoppingPendingCount>0" style="display:flex;gap:10px;align-items:center;cursor:pointer;" @click="navigate('/shopping')">
+                  <span style="font-size:20px;">🛒</span>
+                  <div style="flex:1;">
+                    <div style="font-weight:600;">购物单还有 {{ shoppingPendingCount }} 项</div>
+                    <div style="font-size:12px;color:var(--text-tertiary);">下次出门前顺便采购</div>
+                  </div>
+                  <span class="badge badge-shop">待办</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <div class="card-header-bar">
+              <div class="card-title" style="margin:0;">📖 最近 5 条记录</div>
+              <button class="btn btn-outline btn-sm" @click="navigate('/diary')">查看全部 →</button>
+            </div>
+            <div v-if="recentDiary.length===0" class="empty-state" style="padding:20px;">
+              <div class="icon">📝</div><p>还没有记录</p>
+              <div class="sub">从 Cook 或 Order 开始吧</div>
+              <button class="btn btn-cook btn-sm" @click="navigate('/cook')">去做第一道菜</button>
+            </div>
+            <div v-else>
+              <div v-for="d in recentDiary" :key="d.id" class="diary-entry">
+                <div class="emoji">{{ d.type==='cook' ? '🍳' : '🛵' }}</div>
+                <div class="info">
+                  <div class="info-title">{{ d.title || (d.type==='cook' ? '自己做饭' : '外卖') }}</div>
+                  <div class="meta">{{ d.date }} · {{ d.type==='cook' ? '做饭' : '外卖' }} · 花费 ¥{{ (d.cost||0).toFixed(0) }}{{ d.mood ? ' · 心情 '+d.mood : '' }}</div>
+                </div>
+                <div class="rating">{{ d.rating ? '⭐'.repeat(d.rating) : '' }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======= Cook Mode ======= -->
+      <section v-else-if="route.name==='cook'">
+        <div class="page-title">Cook Mode — 自己做菜</div>
+        <div class="page-sub">冰箱库存管理 · 逆向 LLM 菜谱推荐 · 自动记录日记</div>
+
+        <div class="cook-layout">
+          <div class="cook-left">
+            <div class="fridge">
+              <div class="fridge-top">
+                <span>🧊 FOODTIME FRIDGE</span>
+                <span class="fridge-temp">{{ ingredients.length }} ITEMS</span>
+              </div>
+              <div class="fridge-body">
+                <div v-if="loading.ingredients" class="fridge-empty"><span class="loading" style="color:var(--cook-dark)"></span><br>加载冰箱...</div>
+                <template v-else-if="ingredients.length===0">
+                  <div class="fridge-empty">
+                    <div class="icon">📦</div>冰箱空空如也<br><span style="font-size:11px;">下方添加食材吧</span>
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="fridge-shelf" v-for="cat in catMap" :key="cat">
+                    <div class="ingredient-tag" v-for="ing in availableIngredients.filter(i=>i.category===cat)" :key="ing.id"
+                         :class="[catClass(cat), {selected: basketIds.has(ing.id), 'used-up': ing.status==='used_up', expired: ing.status==='expired'}]"
+                         :title="ing.status==='expired'?'已过期':ing.status==='used_up'?'已用完':''"
+                         @click="toggleBasket(ing)">
+                      {{ ing.name }}<small style="opacity:.6;">{{ ing.quantity }}{{ ing.unit||'' }}</small>
+                      <span class="remove" @click.stop="deleteIngredient(ing)">✕</span>
+                    </div>
+                  </div>
+                </template>
+              </div>
+              <div class="fridge-foot">
+                <div class="fridge-add-bar">
+                  <input class="input-field" v-model="newIng.name" @keyup.enter="addIngredient" placeholder="食材名称">
+                  <select v-model="newIng.category">
+                    <option v-for="c in categories" :key="c.k" :value="c.k">{{ c.label }}</option>
+                  </select>
+                  <button class="btn btn-cook btn-sm" @click="addIngredient" :disabled="!newIng.name.trim()">+</button>
+                </div>
+                <div style="text-align:center;margin-top:6px;">
+                  <button class="btn btn-outline btn-xs" @click="navigate('/ingredients')">打开完整食材库 →</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="cook-right">
+            <div class="card">
+              <div class="card-body">
+                <div class="section-label">🍳 做菜篮子（{{ basketIds.size }}）</div>
+                <div class="ingredient-cloud">
+                  <span v-for="id in [...basketIds]" :key="id" class="ingredient-tag"
+                        :class="catClass(basket[id].category)" @click="toggleBasket(basket[id])">
+                    {{ basket[id].name }} <span class="remove">✕</span>
+                  </span>
+                  <span v-if="basketIds.size===0" style="color:var(--text-tertiary);font-size:12px;">← 从冰箱点击食材加入</span>
+                </div>
+                <div class="divider"></div>
+                <button class="btn btn-cook btn-lg" :disabled="basketIds.size===0 || loading.recipes" @click="recommendRecipes">
+                  <span v-if="loading.recipes" class="loading"></span>
+                  {{ loading.recipes ? 'LLM 正在思考 (约15秒)...' : '帮我决定做什么菜' }}
+                </button>
+              </div>
+            </div>
+
+            <div v-if="recipes.length">
+              <div class="section-label">LLM 推荐方案（{{ recipes.length }}）</div>
+              <div v-for="r in recipes" :key="(r.cache_id||'') + r.name" class="recipe-card">
+                <div class="recipe-card-header">
+                  <div class="recipe-card-title">{{ r.name }}</div>
+                  <div class="recipe-card-meta">
+                    <span v-if="r.difficulty">难度 Lv.{{ r.difficulty }}</span>
+                    <span v-if="r.cooking_time">{{ r.cooking_time }}</span>
+                    <span v-if="r.estimated_cost">{{ r.estimated_cost }}</span>
+                  </div>
+                </div>
+                <div class="recipe-card-detail">
+                  <p style="color:var(--text-secondary);font-size:13px;margin-bottom:6px;">💡 {{ r.reason }}</p>
+                  <p v-if="r.matched_ingredients?.length" class="recipe-matched" style="font-size:12px;margin-bottom:4px;">
+                    ✓ 冰箱已有：{{ r.matched_ingredients.join('、') }}
+                  </p>
+                  <p v-if="r.missing_ingredients?.length" class="recipe-missing" style="font-size:12px;margin-bottom:8px;">
+                    ⚠ 需要采购：{{ r.missing_ingredients.join('、') }}
+                  </p>
+                  <ol class="recipe-steps" v-if="r.steps?.length">
+                    <li v-for="(s,i) in r.steps" :key="i">{{ s }}</li>
+                  </ol>
+                  <div class="cache-id" v-if="r.cache_id">cache-id: {{ r.cache_id }}</div>
+                  <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn btn-cook btn-sm" @click="saveCookRecord(r)">✅ 记录为「今天做这个」</button>
+                    <button v-if="r.missing_ingredients?.length" class="btn btn-outline btn-sm"
+                            @click="addToShopping(r.missing_ingredients)">🛒 缺少的加入购物单</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======= Order Mode ======= -->
+      <section v-else-if="route.name==='order'">
+        <div class="page-title">Order Mode — 点外卖</div>
+        <div class="page-sub">今日美食运势 · 5 轮状态机引导 · 最终推荐 + 美团直达</div>
+        <div class="order-layout">
+          <div class="order-left">
+            <div class="fortune-card" :class="{flipped:!!fortune}" @click="drawFortune">
+              <div class="fortune-inner">
+                <div class="fortune-front">
+                  <div style="font-size:32px;">🃏</div>
+                  <div style="font-family:var(--display);font-size:18px;margin-top:8px;">点击翻牌 · 今日美食运势</div>
+                </div>
+                <div class="fortune-back">
+                  <div style="font-family:var(--display);font-size:16px;color:var(--order);">{{ fortune?.lucky_food || fortune?.title || '加载中...' }}</div>
+                  <div style="margin-top:6px;font-size:13px;color:var(--text-secondary);">{{ fortune?.suggestion || fortune?.content }}</div>
+                  <div v-if="fortune?.food_keywords?.length" style="margin-top:10px;">
+                    <span class="tag" v-for="f in fortune.food_keywords" :key="f">🍀 {{ f }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p style="font-family:var(--px);font-size:7px;color:var(--text-tertiary);text-align:center;">点击卡片重新抽取（每日 LLM 配额: {{ quota.LLM_FORTUNE_QUOTA }}/{{ quota.LLM_FORTUNE_TOTAL || '-' }} 次）</p>
+          </div>
+
+          <div class="order-right">
+            <div v-if="!chatSession" class="card" id="orderCTA">
+              <div class="card-body" style="text-align:center;">
+                <div class="section-label" style="margin-bottom:12px;">5 轮对话精准推荐</div>
+                <button class="btn btn-order btn-lg" :disabled="loading.chatStart" @click="startChat">
+                  <span v-if="loading.chatStart" class="loading"></span>
+                  {{ loading.chatStart ? '创建会话中...' : '帮我决定吃什么外卖' }}
+                </button>
+              </div>
+            </div>
+
+            <div v-else-if="!finalRecommend" class="card">
+              <div class="card-body">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+                  <div class="section-label" style="margin:0;">对话引导 · 轮次 {{ chatRound }}/5</div>
+                  <span class="badge badge-order">{{ lastQuestion?.dimension }}</span>
+                </div>
+                <div class="chat-container" ref="chatBox">
+                  <div v-for="m in chatMsgs" :key="m.id" class="chat-bubble" :class="m.role" style="white-space:pre-wrap;">{{ m.text }}</div>
+                  <div v-if="loading.chatTurn" class="chat-bubble ai"><span class="loading"></span> AI 思考中...</div>
+                </div>
+                <div class="chat-options" v-if="!loading.chatTurn && lastQuestion">
+                  <button class="chip" v-for="opt in lastQuestion.options" :key="opt" @click="sendAnswer(opt)">{{ opt }}</button>
+                </div>
+              </div>
+            </div>
+
+            <div v-else class="card">
+              <div class="card-body">
+                <div class="section-label">🎉 最终推荐</div>
+                <div style="font-family:var(--display);font-size:22px;color:var(--order);text-shadow:2px 2px 0 var(--order-light);">
+                  {{ finalRecommend.final_recommend }}
+                </div>
+                <p style="font-size:13px;color:var(--text-secondary);margin-top:4px;">{{ finalRecommend.recommend_reason }}</p>
+                <div v-if="finalRecommend.alternatives?.length" style="margin-top:8px;">
+                  <span class="tag" v-for="a in finalRecommend.alternatives" :key="a">备选 · {{ a }}</span>
+                </div>
+                <div class="divider"></div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <a class="btn btn-order btn-sm" :href="finalRecommend.meituan_url" target="_blank" rel="noopener">去美团搜索 →</a>
+                  <button class="btn btn-outline btn-sm" @click="saveTakeout(finalRecommend,'好吃')">👍 好吃</button>
+                  <button class="btn btn-outline btn-sm" @click="saveTakeout(finalRecommend,'一般')">😐 还行</button>
+                  <button class="btn btn-outline btn-sm" @click="saveTakeout(finalRecommend,'踩雷')">💣 踩雷</button>
+                  <button class="btn btn-outline btn-sm" @click="resetChat">🔄 重新聊一次</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======= Diary ======= -->
+      <section v-else-if="route.name==='diary'">
+        <div class="page-title">美食日记</div>
+        <div class="page-sub">自动记录 · 热力图 · 偏好引擎自动演进</div>
+
+        <div class="grid-3" style="margin-bottom:16px;">
+          <div class="stat-card cook"><div class="stat-num">{{ stats?.cook_count_30d || 0 }}</div><div class="stat-label">最近 30 天做饭</div></div>
+          <div class="stat-card order"><div class="stat-num">{{ stats?.takeout_count_30d || 0 }}</div><div class="stat-label">最近 30 天外卖</div></div>
+          <div class="stat-card save"><div class="stat-num">¥{{ stats?.money_saved_30d || 0 }}</div><div class="stat-label">做饭节省（估算）</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <div class="section-label">{{ currentYearMonth }} 日历热力图</div>
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:10px;text-align:center;font-family:var(--px);font-size:7px;color:var(--text-tertiary);">
+              <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+            </div>
+            <div class="heatmap">
+              <div v-for="d in heatmapDays" :key="d.date" class="heatmap-day"
+                   :class="[d.type, {today: d.isToday}]" :title="d.date + (d.type?(' · '+d.type):'')">{{ d.day }}</div>
+            </div>
+            <div style="display:flex;gap:12px;font-family:var(--px);font-size:7px;color:var(--text-tertiary);margin-top:10px;flex-wrap:wrap;">
+              <span><span style="display:inline-block;width:10px;height:10px;background:var(--cook);border:1px solid var(--cook-dark);vertical-align:middle;"></span> 做饭</span>
+              <span><span style="display:inline-block;width:10px;height:10px;background:var(--diary);border:1px solid var(--diary-dark);vertical-align:middle;"></span> 外卖</span>
+              <span><span style="display:inline-block;width:10px;height:10px;background:linear-gradient(135deg,var(--cook) 50%,var(--diary) 50%);border:1px solid var(--text);vertical-align:middle;"></span> 都有</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <div class="section-label">偏好引擎（newW = old×0.7 + fb×0.3）</div>
+            <div v-if="prefWeights.length===0" style="color:var(--text-tertiary);font-size:12px;">暂无偏好数据，完成一次 Cook 或外卖反馈后自动开始训练</div>
+            <div v-else class="pref-grid">
+              <div v-for="p in prefWeights" :key="p.dimension" class="pref-cell">
+                <div class="name">{{ p.dimension }}</div>
+                <div class="pref-bar">
+                  <div class="pref-fill" :style="{width: (p.weight*100).toFixed(0)+'%', background: p.weight>=0.7?'var(--cook)':p.weight>=0.5?'var(--order)':'var(--diary)'}"></div>
+                </div>
+                <div class="meta">{{ (p.weight||0).toFixed(2) }} · 反馈 #{{ p.feedback_count||0 }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <div class="card-header-bar">
+              <div class="section-label" style="margin:0;">日记记录（{{ diaryList.length }}）</div>
+              <div class="diary-filter">
+                <button class="btn btn-outline btn-sm" :class="{active:diaryFilter===''}" @click="diaryFilter=''">全部</button>
+                <button class="btn btn-outline btn-sm" :class="{active:diaryFilter==='cook'}" @click="diaryFilter='cook'">🍳 做饭</button>
+                <button class="btn btn-outline btn-sm" :class="{active:diaryFilter==='order'}" @click="diaryFilter='order'">🛵 外卖</button>
+              </div>
+            </div>
+            <div v-if="filteredDiary.length===0" class="empty-state"><div class="icon">📝</div><p>还没有记录</p><div class="sub">先去 Cook 或 Order 吧</div></div>
+            <div v-else>
+              <div v-for="d in filteredDiary" :key="d.id" class="diary-entry">
+                <div class="emoji">{{ d.type==='cook' ? '🍳' : '🛵' }}</div>
+                <div class="info">
+                  <div class="info-title">{{ d.title || (d.type==='cook' ? '自己做饭' : '外卖') }}</div>
+                  <div class="meta">
+                    {{ d.date }} · {{ d.type==='cook' ? `成本 ¥${(d.cost||0).toFixed(0)}` : `花费 ¥${(d.cost||0).toFixed(0)}` }}
+                    <span v-if="d.mood"> · 心情「{{ d.mood }}」</span>
+                  </div>
+                </div>
+                <div class="rating">{{ d.rating ? '⭐'.repeat(d.rating) : '' }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======= Shopping ======= -->
+      <section v-else-if="route.name==='shopping'">
+        <div class="page-title">🛒 购物单管理</div>
+        <div class="page-sub">记录待采购 · 勾选后可一键入库到冰箱</div>
+
+        <div class="card">
+          <div class="card-body">
+            <div class="section-label">快速添加</div>
+            <div class="input-row" style="margin-bottom:12px;">
+              <input class="input-field" v-model="newShop.name" @keyup.enter="addShoppingItem" placeholder="物品名称（如：西红柿）">
+              <input class="input-field" v-model="newShop.quantity" @keyup.enter="addShoppingItem" placeholder="数量（如：500g / 2个）">
+              <select class="input-field" v-model="newShop.category">
+                <option v-for="c in categories" :key="c.k" :value="c.k">{{ c.label }}</option>
+              </select>
+              <button class="btn btn-shop" @click="addShoppingItem" :disabled="!newShop.name.trim()">+ 添加到购物单</button>
+            </div>
+            <div class="filter-bar">
+              <button class="btn btn-outline btn-sm" :class="{active:shopFilter===''}" @click="shopFilter=''">全部 ({{ shoppingList.length }})</button>
+              <button class="btn btn-outline btn-sm" :class="{active:shopFilter==='pending'}" @click="shopFilter='pending'">待采购 ({{ shoppingPendingCount }})</button>
+              <button class="btn btn-outline btn-sm" :class="{active:shopFilter==='checked'}" @click="shopFilter='checked'">已购买 ({{ shoppingCheckedCount }})</button>
+              <div class="spacer"></div>
+              <button v-if="shoppingCheckedCount>0" class="btn btn-outline btn-sm" @click="bulkMoveCheckedToIngredients" :disabled="loading.bulkIng">
+                <span v-if="loading.bulkIng" class="loading"></span> {{ loading.bulkIng?'移动中...':'已购的全部入库 →' }}
+              </button>
+              <button v-if="shoppingCheckedCount>0" class="btn btn-outline btn-sm" @click="clearCheckedShopping">🧹 清空已勾选</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div v-if="loading.shopping" class="empty-state"><div class="loading"></div><p style="margin-top:8px;">加载购物单...</p></div>
+          <div v-else-if="filteredShopping.length===0" class="empty-state">
+            <div class="icon">🛒</div><p>购物单是空的</p>
+            <div class="sub">{{ shopFilter==='checked' ? '还没有买过东西呢' : shopFilter==='pending' ? '没有待采购项，太棒了！' : '在 Cook 模式下需要的食材可一键加入这里' }}</div>
+          </div>
+          <div v-else>
+            <div v-for="item in filteredShopping" :key="item.id" class="shopping-item" :class="{checked:item.checked}">
+              <input type="checkbox" class="si-check" :checked="item.checked" @change="toggleShopItem(item)">
+              <div style="flex:1;min-width:0;">
+                <div class="si-name">{{ item.name }}</div>
+                <div class="si-meta">
+                  <span v-if="item.quantity" class="badge badge-gray">量:{{ item.quantity }}</span>
+                  <span class="badge badge-ing">{{ item.category || '其他' }}</span>
+                  <span v-if="item.source_recipe">来自:{{ item.source_recipe }}</span>
+                  <span v-if="item.checked_at" class="badge badge-green">✓ {{ (item.checked_at||'').slice(0,10) }} 已购</span>
+                </div>
+              </div>
+              <div class="si-actions">
+                <button v-if="item.checked" class="btn btn-shop btn-xs" @click="moveToIngredients(item)" title="购买后入库冰箱">📥 入库</button>
+                <button class="btn btn-danger btn-xs" @click="deleteShopItem(item)" title="删除">✕</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======= Ingredients ======= -->
+      <section v-else-if="route.name==='ingredients'">
+        <div class="page-title">🧊 食材库管理</div>
+        <div class="page-sub">完整 CRUD · 过期/用完状态 · 筛选与编辑</div>
+
+        <div class="card">
+          <div class="card-body">
+            <div class="section-label">＋ 新增食材</div>
+            <div class="input-row" style="margin-bottom:12px;">
+              <input class="input-field" v-model="ingForm.name" @keyup.enter="ingFormSubmit" placeholder="食材名称（必填）">
+              <select class="input-field" v-model="ingForm.category">
+                <option v-for="c in categories" :key="c.k" :value="c.k">{{ c.label }}</option>
+              </select>
+              <input class="input-field" v-model="ingForm.quantity" @keyup.enter="ingFormSubmit" placeholder="数量 (如 500g)">
+              <input class="input-field" type="date" v-model="ingForm.expiry_date" :value="ingForm.expiry_date">
+              <button class="btn btn-ing" @click="ingFormSubmit" :disabled="!ingForm.name.trim()">
+                {{ ingForm.editingId ? '保存修改' : '添加' }}
+              </button>
+              <button v-if="ingForm.editingId" class="btn btn-outline" @click="ingFormReset()">取消编辑</button>
+            </div>
+            <div class="filter-bar">
+              <div class="chip-group">
+                <span class="chip" :class="{active:ingFilter.status===''}" @click="ingFilter.status=''">全部状态</span>
+                <span class="chip" :class="{active:ingFilter.status==='available'}" @click="ingFilter.status='available'">✅ 可用</span>
+                <span class="chip" :class="{active:ingFilter.status==='expiring'}" @click="ingFilter.status='expiring'">⏰ 临期</span>
+                <span class="chip" :class="{active:ingFilter.status==='expired'}" @click="ingFilter.status='expired'">⚠️ 过期</span>
+                <span class="chip" :class="{active:ingFilter.status==='used_up'}" @click="ingFilter.status='used_up'">📭 用完</span>
+              </div>
+              <div class="spacer"></div>
+              <input class="input-field search-input" style="max-width:220px;" v-model="ingFilter.search" placeholder="🔍 搜索食材名">
+            </div>
+            <div class="filter-bar" style="margin-top:4px;">
+              <span class="section-label" style="margin:0;">按分类：</span>
+              <span class="chip" :class="{active:ingFilter.category===''}" @click="ingFilter.category=''">全部</span>
+              <span class="chip" v-for="c in categories" :key="c.k" :class="{active:ingFilter.category===c.k}" @click="ingFilter.category=c.k">{{ c.label }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div v-if="loading.ingredients" class="empty-state"><div class="loading"></div><p style="margin-top:8px;">加载食材库...</p></div>
+          <div v-else-if="filteredIngredients.length===0" class="empty-state">
+            <div class="icon">🧊</div><p>没有符合条件的食材</p>
+            <div class="sub">请调整筛选条件或新增食材</div>
+          </div>
+          <div v-else>
+            <div class="ing-table-head">
+              <div>名称</div><div>分类</div><div>数量/单位</div><div>过期日 / 状态</div><div>操作</div>
+            </div>
+            <div v-for="ing in filteredIngredients" :key="ing.id" class="ing-row"
+                 :class="{'used-up': ing.status==='used_up', expired: ing.status==='expired'}">
+              <div>
+                <div style="font-weight:600;">{{ ing.name }}</div>
+                <div class="meta" style="font-family:var(--px);font-size:7px;color:var(--text-tertiary);margin-top:2px;">创建: {{ (ing.created_at||'').slice(0,10) }}</div>
+              </div>
+              <div><span class="badge badge-ing">{{ ing.category || '其他' }}</span></div>
+              <div>{{ ing.quantity || '-' }} {{ ing.unit || '' }}</div>
+              <div>
+                <div class="ing-status">
+                  <span v-if="ing.status==='expired'" class="badge badge-danger">已过期</span>
+                  <span v-else-if="ing.status==='used_up'" class="badge badge-gray">已用完</span>
+                  <span v-else-if="isExpiring(ing)" class="badge badge-warn">临期 {{ daysLeft(ing) }} 天</span>
+                  <span v-else class="badge badge-green">可用</span>
+                </div>
+                <div style="font-size:11px;color:var(--text-tertiary);margin-top:4px;" v-if="ing.expiry_date">过期: {{ ing.expiry_date }}</div>
+              </div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                <button v-if="ing.status==='available' || isExpiring(ing)" class="btn btn-outline btn-xs" @click="markIngredient(ing,'used_up')" title="标记为已用完">📭</button>
+                <button v-if="ing.status==='expired' || ing.status==='used_up'" class="btn btn-outline btn-xs" @click="markIngredient(ing,'available')" title="恢复为可用">♻️</button>
+                <button class="btn btn-outline btn-xs" @click="editIngredient(ing)">✏️</button>
+                <button class="btn btn-danger btn-xs" @click="deleteIngredient(ing)">🗑️</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======= Settings ======= -->
+      <section v-else-if="route.name==='settings'">
+        <div class="page-title">⚙️ 个人设置</div>
+        <div class="page-sub">账户信息 · 修改密码 · Onboarding 偏好</div>
+
+        <div class="settings-section">
+          <div class="card">
+            <div class="card-body">
+              <div class="profile-head">
+                <div class="profile-avatar">{{ (me.username || 'U').slice(0,1).toUpperCase() }}</div>
+                <div class="profile-meta">
+                  <div class="nick">{{ me.nickname || me.username }}</div>
+                  <div class="sub">
+                    用户名: {{ me.username }}<br>
+                    ID: {{ me.user_id || me.id }}<br>
+                    累计做饭 {{ me.total_cook_count || 0 }} 次 · 外卖 {{ me.total_takeout_count || 0 }} 次 · 连续活跃 {{ me.streak_days || 0 }} 天<br>
+                    注册于 {{ me.created_at || '-' }} · 最近活跃 {{ me.last_active_at || '-' }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="card">
+            <div class="card-body">
+              <div class="settings-section-title">🔐 修改密码 <span v-if="pwdForm.changed" class="badge badge-green">已更新</span></div>
+              <div v-if="pwdForm.error" class="auth-error">{{ pwdForm.error }}</div>
+              <div v-if="pwdForm.success" style="background:#D4EBD9;border:2px solid var(--success);color:var(--success-dark);padding:10px 14px;border-radius:3px;font-size:13px;margin-bottom:14px;">✅ {{ pwdForm.success }}</div>
+              <div class="form-group">
+                <label class="input-label">当前密码</label>
+                <input class="input-field" type="password" v-model="pwdForm.old" placeholder="请输入当前密码">
+              </div>
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label class="input-label">新密码（≥6 位）</label>
+                  <input class="input-field" type="password" v-model="pwdForm.pwd" placeholder="新密码">
+                </div>
+                <div class="form-group">
+                  <label class="input-label">确认新密码</label>
+                  <input class="input-field" type="password" v-model="pwdForm.pwd2" placeholder="再输入一次" @keyup.enter="changePassword">
+                </div>
+              </div>
+              <div class="input-help">⚠️ 修改密码后，所有已登录的设备都会被自动登出（安全策略）。</div>
+              <div style="margin-top:12px;">
+                <button class="btn btn-set" :disabled="pwdForm.loading" @click="changePassword">
+                  <span v-if="pwdForm.loading" class="loading"></span> {{ pwdForm.loading?'提交中...':'确认修改密码' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="card">
+            <div class="card-body">
+              <div class="settings-section-title">🎭 偏好档案 (Onboarding)</div>
+              <div v-if="onboardingLoading" class="empty-state" style="padding:20px;"><div class="loading"></div></div>
+              <template v-else>
+                <div v-if="onboarding.completed" style="margin-bottom:14px;">
+                  <span class="badge badge-green">已完成</span>
+                  <span v-if="onboarding.zodiac" class="badge badge-cook" style="margin-left:6px;">♈ {{ onboarding.zodiac }}</span>
+                  <span v-if="onboarding.chinese_zodiac" class="badge badge-order" style="margin-left:6px;">🐲 {{ onboarding.chinese_zodiac }}</span>
+                  <span v-if="onboarding.mbti" class="badge badge-ing" style="margin-left:6px;">{{ onboarding.mbti }}</span>
+                  <span v-if="onboarding.cuisines && onboarding.cuisines.length" class="badge badge-shop" style="margin-left:6px;">🍜 {{ onboarding.cuisines.length }} 个菜系</span>
+                </div>
+                <div class="form-grid-2">
+                  <div class="form-group">
+                    <label class="input-label">出生日期 <span style="color:var(--accent)">*</span></label>
+                    <input class="input-field" type="date" v-model="onboarding.birth_date">
+                    <!-- 需求 #1: 选完日期后实时带出生肖 + 星座小字 -->
+                    <div v-if="liveZodiac || liveChinese" class="live-zodiac-hint">
+                      <span v-if="liveZodiac" class="mini-badge mini-cook">♈ {{ liveZodiac }}</span>
+                      <span v-if="liveChinese" class="mini-badge mini-order">🐲 {{ liveChinese }}</span>
+                      <span class="hint-sub">保存后会正式记录并参与美食运势计算</span>
+                    </div>
+                    <div v-else class="input-help">选择出生日期后，将在此自动显示星座和属相</div>
+                  </div>
+                  <div class="form-group">
+                    <label class="input-label">MBTI（选填，官方 16 型）</label>
+                    <!-- 需求 #2: 下拉选择（含"不选/不告诉你"的占位项） -->
+                    <select class="input-field" v-model="onboarding.mbti">
+                      <option value="">— 不填 / 不清楚 —</option>
+                      <optgroup label="Analysts 分析家 NT">
+                        <option v-for="m in ['INTJ','INTP','ENTJ','ENTP']" :key="m" :value="m">{{ m }}</option>
+                      </optgroup>
+                      <optgroup label="Diplomats 外交家 NF">
+                        <option v-for="m in ['INFJ','INFP','ENFJ','ENFP']" :key="m" :value="m">{{ m }}</option>
+                      </optgroup>
+                      <optgroup label="Sentinels 守护者 SJ">
+                        <option v-for="m in ['ISTJ','ISFJ','ESTJ','ESFJ']" :key="m" :value="m">{{ m }}</option>
+                      </optgroup>
+                      <optgroup label="Explorers 探险家 SP">
+                        <option v-for="m in ['ISTP','ISFP','ESTP','ESFP']" :key="m" :value="m">{{ m }}</option>
+                      </optgroup>
+                    </select>
+                    <div class="input-help">可随时修改，运势算法会自动适配</div>
+                  </div>
+                  <div class="form-group">
+                    <label class="input-label">每餐预算/人均（元）<span style="color:var(--accent)">*</span></label>
+                    <!-- 需求 #3: 7 档枚举 -->
+                    <select class="input-field" v-model="onboarding.budget_level">
+                      <option v-for="b in BUDGET_OPTIONS" :key="b" :value="b">¥ {{ b }}</option>
+                    </select>
+                    <div class="input-help">影响推荐菜的价位筛选（外卖/做饭都参考）</div>
+                  </div>
+                  <div class="form-group">
+                    <label class="input-label">厨艺水平 <span style="color:var(--accent)">*</span></label>
+                    <!-- 需求 #4: 8 档细化 -->
+                    <select class="input-field" v-model="onboarding.cooking_skill">
+                      <option v-for="s in COOKING_SKILL_OPTIONS" :key="s" :value="s">{{ s }}</option>
+                    </select>
+                    <div class="input-help">影响推荐：不会做菜的用户优先外卖/简单餐</div>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="input-label">首选口味</label>
+                  <div class="chip-group">
+                    <button class="chip" v-for="t in tasteOptions" :key="t" :class="{active:onboarding.taste_preference===t}" @click="onboarding.taste_preference=t" type="button">{{ t }}</button>
+                  </div>
+                </div>
+                <!-- 需求 #5: 菜系多选（新增） -->
+                <div class="form-group">
+                  <label class="input-label">喜欢的菜系（多选，选填）</label>
+                  <div class="chip-group" style="--gap:6px;">
+                    <button class="chip cuisine"
+                      v-for="(c,idx) in CUISINE_OPTIONS"
+                      :key="c"
+                      :class="{active: onboarding.cuisines.includes(c)}"
+                      @click="toggleArr(onboarding.cuisines, c)"
+                      type="button">
+                      {{ c }}
+                    </button>
+                    <!-- 其他菜系 → 弹出输入框；点选后写入 onboarding.cuisines -->
+                    <div v-if="onboarding._cuisine_other_show" style="display:inline-flex;gap:4px;align-items:center;">
+                      <input class="input-field cuisine-other-input" v-model="onboarding._cuisine_other_input" maxlength="20" placeholder="自填菜系名" @keyup.enter="addCustomCuisine">
+                      <button class="btn btn-primary btn-sm" type="button" @click="addCustomCuisine">添加</button>
+                    </div>
+                    <button
+                      v-else
+                      class="chip cuisine other-add"
+                      type="button"
+                      @click="onboarding._cuisine_other_show = true">
+                      ＋ 其他菜系…
+                    </button>
+                  </div>
+                  <div v-if="onboarding.cuisines.length" class="input-help">
+                    已选菜系：<span v-for="(c,i) in onboarding.cuisines" :key="c" class="sel-cuisine-pill">
+                      {{ c }}<button class="pill-x" @click="removeArr(onboarding.cuisines,c)" type="button">✕</button>
+                    </span>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="input-label">拥有厨具（点击多选）</label>
+                  <div class="chip-group">
+                    <button class="chip" v-for="t in cookwareOptions" :key="t" :class="{active:onboarding.cookware.includes(t)}" @click="toggleArr(onboarding.cookware,t)" type="button">{{ t }}</button>
+                  </div>
+                </div>
+                <!-- 需求 #6: 忌口食材三级树 + 其他自填 -->
+                <div class="form-group">
+                  <label class="input-label">忌口食材（三级分类 · 一级"其他"支持自填）</label>
+                  <div class="input-help" style="margin-bottom:10px;">
+                    展开大类 → 展开小类 → 勾选具体食材。每个大类末尾都有"其他"，可自行输入食材名
+                  </div>
+                  <div class="dislike-tree">
+                    <details v-for="(L1, i1) in DISLIKED_TREE" :key="'L1_'+i1" class="tree-L1" :open="i1===0">
+                      <summary class="tree-summary-L1">
+                        <span class="tree-arrow">▶</span>
+                        <span class="tree-name">{{ L1.name }}</span>
+                        <span class="tree-count-badge">{{ countDislikedInL1(L1) }}</span>
+                      </summary>
+                      <div class="tree-L2-wrap">
+                        <details v-for="(L2, i2) in L1.children" :key="'L2_'+i1+'_'+i2" class="tree-L2">
+                          <summary class="tree-summary-L2">
+                            <span class="tree-arrow">▸</span>
+                            <span class="tree-name">{{ L2.name }}</span>
+                            <span class="tree-count-badge small">{{ countDislikedInL2(L2) }}</span>
+                          </summary>
+                          <!-- 普通叶子：chip 多选 -->
+                          <template v-if="!L2.__custom">
+                            <div class="chip-group leaf-group">
+                              <button class="chip leaf"
+                                v-for="(item, i3) in L2.children"
+                                :key="'leaf_'+i1+'_'+i2+'_'+i3"
+                                :class="{active: onboarding.disliked_ingredients.includes(item)}"
+                                @click="toggleArr(onboarding.disliked_ingredients, item)"
+                                type="button">{{ item }}</button>
+                            </div>
+                          </template>
+                          <!-- 其他小类：自填输入 -->
+                          <template v-else>
+                            <div class="custom-other-wrap">
+                              <div class="chip-group">
+                                <button class="chip leaf"
+                                  v-for="(item,idx) in onboarding._custom_disliked[dislikeTreePathKey(L1.name, L2.name)] || []"
+                                  :key="'custom_'+i1+'_'+i2+'_'+idx"
+                                  :class="{active: true}"
+                                  type="button">
+                                  ⛔ {{ item }}
+                                  <span class="remove" @click.stop="removeCustomDisliked(L1.name, L2.name, idx, item)">✕</span>
+                                </button>
+                              </div>
+                              <div style="display:flex;gap:6px;align-items:center;margin-top:8px;">
+                                <input class="input-field custom-other-input"
+                                  :ref="el=>onboarding._custom_disliked_refs[dislikeTreePathKey(L1.name,L2.name)] = el"
+                                  :placeholder="'自定义「'+L1.name+'/'+L2.name+'」食材名'"
+                                  @keyup.enter="addCustomDisliked(L1.name, L2.name, $event.target)"
+                                  maxlength="30">
+                                <button class="btn btn-primary btn-sm" type="button"
+                                  @click="addCustomDisliked(L1.name, L2.name, onboarding._custom_disliked_refs[dislikeTreePathKey(L1.name,L2.name)])">
+                                  添加
+                                </button>
+                              </div>
+                            </div>
+                          </template>
+                        </details>
+                      </div>
+                    </details>
+                  </div>
+                  <!-- 已选忌口总览（可删除）-->
+                  <div v-if="onboarding.disliked_ingredients.length" style="margin-top:10px;">
+                    <div class="input-help">当前忌口（{{ onboarding.disliked_ingredients.length }} 项）：</div>
+                    <div class="chip-group" style="margin-top:4px;">
+                      <span class="chip" v-for="t in onboarding.disliked_ingredients" :key="t">⛔ {{ t }} <span class="remove" @click="removeArr(onboarding.disliked_ingredients,t)">✕</span></span>
+                    </div>
+                  </div>
+                  <div v-else class="input-help" style="margin-top:6px;color:var(--text-tertiary);">暂无忌口，想吃什么就吃什么 🎉</div>
+                </div>
+                <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+                  <button class="btn btn-primary" :disabled="onboardingSaving" @click="saveOnboarding">
+                    <span v-if="onboardingSaving" class="loading"></span> {{ onboardingSaving?'保存中...':(onboarding.completed?'更新偏好档案':'完成 Onboarding') }}
+                  </button>
+                  <button class="btn btn-outline" @click="loadOnboarding" :disabled="onboardingLoading">重置</button>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======= About ======= -->
+      <section v-else-if="route.name==='about'">
+        <div class="page-title">ℹ️ 关于 FoodTime 食光</div>
+        <div class="page-sub">项目定位 · 技术栈 · 设计理念 · 更新时间线</div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-body">
+              <div class="card-title">🍳 项目定位</div>
+              <p style="color:var(--text-secondary);font-size:13px;line-height:1.8;">
+                <strong style="color:var(--text);">FoodTime</strong> 是为「独居青年」设计的吃饭决策助手，用算法 + LLM 解决 <em>「今天吃什么」</em> 的人生难题。
+              </p>
+              <div style="margin-top:12px;" class="chip-group">
+                <span class="chip active">🍳 Cook Mode</span>
+                <span class="chip active">🛵 Order Mode</span>
+                <span class="chip active">📖 美食日记</span>
+                <span class="chip active">🧠 偏好引擎</span>
+                <span class="chip active">🃏 美食运势</span>
+                <span class="chip active">🛒 购物单</span>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-body">
+              <div class="card-title">🏗️ 技术栈</div>
+              <div class="stack-grid">
+                <div class="stack-item"><div class="name">FastAPI</div><div class="ver">0.115</div></div>
+                <div class="stack-item"><div class="name">SQLAlchemy</div><div class="ver">2.0</div></div>
+                <div class="stack-item"><div class="name">MySQL</div><div class="ver">8.0</div></div>
+                <div class="stack-item"><div class="name">JWT</div><div class="ver">双 Token</div></div>
+                <div class="stack-item"><div class="name">Vue 3</div><div class="ver">3.4.38</div></div>
+                <div class="stack-item"><div class="name">LLM</div><div class="ver">DeepSeek + DashScope</div></div>
+                <div class="stack-item"><div class="name">Docker</div><div class="ver">容器化</div></div>
+                <div class="stack-item"><div class="name">Hash Router</div><div class="ver">SPA 前端</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <div class="card-title">🕓 版本时间线</div>
+            <div class="about-timeline" style="margin-top:12px;">
+              <div class="timeline-item">
+                <div class="timeline-date">v2.1 · NOW</div>
+                <div class="timeline-title">🔐 P0 安全大修复 + 🧭 完整 Hash 路由</div>
+                <div class="timeline-desc">API Key 迁移 .env.local；per-(user,kind) asyncio.Lock 解决配额并发；JWT token_valid_since 改密黑名单；食材过期自动流转；菜谱 cache_id 归因；仪表盘/购物单/食材库/设置/关于 5 个新页面，Hash 路由 + Auth 守卫完整实现。</div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-date">v2.0</div>
+                <div class="timeline-title">🧠 双 LLM Provider + 偏好权重引擎</div>
+                <div class="timeline-desc">接入 DeepSeek + DashScope 双 provider，mock 降级；5 轮对话外卖推荐；偏好权重指数衰减 new = old×0.7 + fb×0.3；配额系统上线。</div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-date">v1.2</div>
+                <div class="timeline-title">🃏 美食运势 + 热力图</div>
+                <div class="timeline-desc">星座/属相/MBTI 三方运势；美食热力图；冰箱可视化。</div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-date">v1.0</div>
+                <div class="timeline-title">🍳 MVP：Cook + Diary</div>
+                <div class="timeline-desc">首版上线：基础登录注册、冰箱、LLM 菜谱推荐、日记记录。</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <div class="card-title">🔗 快速链接</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+              <a class="btn btn-outline" href="/docs" target="_blank" rel="noopener">📄 API 文档 (Swagger)</a>
+              <a class="btn btn-outline" href="/api/health" target="_blank" rel="noopener">❤️ 健康检查</a>
+              <a class="btn btn-outline" href="https://platform.deepseek.com/" target="_blank" rel="noopener">🧠 DeepSeek 控制台</a>
+              <a class="btn btn-outline" href="https://dashscope.console.aliyun.com/" target="_blank" rel="noopener">☁️ DashScope 控制台</a>
+            </div>
+            <div style="margin-top:16px;font-family:var(--px);font-size:7px;color:var(--text-tertiary);line-height:2;">
+              // 当前后端环境: {{ env }}<br>
+              // 数据库: MySQL · API_BASE: {{ API_BASE }}<br>
+              // Made with 🍳 &amp; ❤️ — FoodTime v2.1
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Fallback for unknown routes (logged in) -->
+      <section v-else-if="route.name==='_404'">
+        <div class="empty-state">
+          <div class="icon">🧭</div>
+          <p>页面未找到 (404)</p>
+          <div class="sub">访问的路径 {{ route.path }} 不存在，请选择左侧菜单或返回首页。</div>
+          <button class="btn btn-primary" @click="navigate('/dashboard')">返回首页</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Mobile Bottom Tab (5 格刚好对应主菜单) -->
+  <div class="bottom-tab" v-if="me">
+    <div class="bottom-tab-item" :class="{active:route.name==='dashboard', dashboard:true}" @click="navigate('/dashboard')">
+      <span class="bottom-tab-icon">🏠</span> 首页
+    </div>
+    <div class="bottom-tab-item" :class="{active:route.name==='cook', cook:true}" @click="navigate('/cook')">
+      <span class="bottom-tab-icon">🍳</span> Cook
+    </div>
+    <div class="bottom-tab-item" :class="{active:route.name==='order', order:true}" @click="navigate('/order')">
+      <span class="bottom-tab-icon">🛵</span> Order
+    </div>
+    <div class="bottom-tab-item" :class="{active:route.name==='shopping', shopping:true}" @click="navigate('/shopping')">
+      <span class="bottom-tab-icon">🛒</span> 购物
+    </div>
+    <div class="bottom-tab-item" :class="{active:route.name==='diary', diary:true}" @click="navigate('/diary')">
+      <span class="bottom-tab-icon">📖</span> 日记
+    </div>
+  </div>
+
+  <!-- Modal (通用) -->
+  <transition name="fade">
+    <div v-if="modal.show" class="modal-mask" @click.self="modal.show=false">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>{{ modal.title }}</h3>
+          <button class="modal-close" @click="modal.show=false">×</button>
+        </div>
+        <div class="modal-body">{{ modal.body }}</div>
+        <div class="modal-footer">
+          <button class="btn btn-outline btn-sm" @click="modal.show=false">取消</button>
+          <button class="btn btn-danger btn-sm" @click="modal.onOk && modal.onOk()">确认</button>
+        </div>
+      </div>
+    </div>
+  </transition>
+
+  <!-- Toast -->
+  <div class="toast" :class="[toast.type, {show:toast.show}]">{{ toast.msg }}</div>
+</div>
+
+<script>
+/* =========================================================================
+ * Vue 3 就绪守卫：等 CDN 加载完成再执行，避免 ReferenceError
+ * - 双 CDN 回退（unpkg → jsdelivr，如都失败则 10s 后提示）
+ * =======================================================================*/
+(function () {
+  function vueReady() {
+    return typeof window.Vue !== 'undefined' && typeof window.Vue.createApp === 'function';
+  }
+  var fallbackCount = 0;
+  function ensureVueScript() {
+    if (vueReady() || fallbackCount >= 2) return;
+    fallbackCount += 1;
+    var s = document.createElement('script');
+    s.src = fallbackCount === 1
+      ? 'https://cdn.jsdelivr.net/npm/vue@3.4.38/dist/vue.global.prod.js'
+      : 'https://lib.baomitu.com/vue/3.4.38/vue.global.prod.min.js';
+    s.crossOrigin = 'anonymous';
+    document.head.appendChild(s);
+  }
+  ensureVueScript();
+
+  function showFatal(msg) {
+    var box = document.getElementById('app');
+    if (!box) return;
+    var safeMsg = String(msg || '').replace(/[<>&"']/g, function(c) {
+      return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c];
+    });
+    box.innerHTML =
+      '<div style="padding:60px 24px;text-align:center;">' +
+        '<div style="font-size:48px;">🫥</div>' +
+        '<div style="font-family:var(--display);font-size:20px;margin:12px 0 6px;">前端资源加载失败</div>' +
+        '<div style="color:#6B5D4A;font-size:13px;">' + safeMsg + '</div>' +
+        '<div style="margin-top:16px;"><button onclick="location.reload()" style="padding:8px 20px;background:#E07856;color:#fff;border:2px solid #C45A3E;border-radius:3px;box-shadow:2px 2px 0 #C45A3E;cursor:pointer;font-family:inherit;">重试刷新</button></div>' +
+      '</div>';
+  }
+
+  function boot() {
+    const { createApp, reactive, ref, computed, onMounted, onBeforeUnmount, nextTick, watch, watchEffect } = Vue;
+
+const API_BASE = (location.port && location.protocol.startsWith('http'))
+  ? `${location.protocol}//${location.hostname}:${location.port}/api`
+  : 'http://localhost:8000/api';
+
+const CATEGORIES = [
+  {k:'蔬菜',label:'蔬菜'},{k:'肉蛋',label:'肉蛋'},{k:'水产',label:'水产'},
+  {k:'主食',label:'主食'},{k:'调料',label:'调料'},{k:'乳制品',label:'乳制品'},{k:'其他',label:'其他'},
+];
+const CAT_CLASS = {蔬菜:'vegetable',肉蛋:'meat',水产:'aquatic',主食:'staple',调料:'seasoning',乳制品:'dairy',其他:'other'};
+
+/* ---------- 路由表（Hash 路由）---------- */
+const ROUTES = [
+  // 公开
+  { name:'login',    path:'/login',    label:'登录', public:true  },
+  { name:'register', path:'/register', label:'注册', public:true  },
+  // 主菜单
+  { name:'dashboard', path:'/dashboard', label:'仪表盘', icon:'🏠' },
+  { name:'cook',      path:'/cook',      label:'Cook Mode', icon:'🍳', parentLabel:'主菜单', parentPath:'/dashboard' },
+  { name:'order',     path:'/order',     label:'Order Mode', icon:'🛵', parentLabel:'主菜单', parentPath:'/dashboard' },
+  { name:'diary',     path:'/diary',     label:'美食日记', icon:'📖', parentLabel:'主菜单', parentPath:'/dashboard' },
+  // 管理
+  { name:'shopping',    path:'/shopping',    label:'购物单', icon:'🛒', parentLabel:'管理', parentPath:'/dashboard' },
+  { name:'ingredients', path:'/ingredients', label:'食材库', icon:'🧊', parentLabel:'管理', parentPath:'/dashboard' },
+  // 系统
+  { name:'settings', path:'/settings', label:'个人设置', icon:'⚙️', parentLabel:'系统', parentPath:'/dashboard' },
+  { name:'about',    path:'/about',    label:'关于', icon:'ℹ️', parentLabel:'系统', parentPath:'/dashboard' },
+];
+const DEFAULT_LOGGED_IN = '/dashboard';
+const DEFAULT_PUBLIC = '/login';
+
+function hashToRoute() {
+  let h = (window.location.hash || '').replace(/^#/, '');
+  if (!h || h==='/') h = DEFAULT_LOGGED_IN;
+  // 去掉查询字符串
+  const [pathOnly] = h.split('?');
+  const r = ROUTES.find(x => x.path === pathOnly);
+  if (r) return { ...r };
+  return { name:'_404', path:h, label:'404' };
+}
+function navigateToHash(path) {
+  if (!path.startsWith('/')) path = '/' + path;
+  if (window.location.hash === '#' + path) {
+    // 相同路径强制触发一次
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  } else {
+    window.location.hash = '#' + path;
+  }
+}
+
+/* ---------- JWT Token Manager（localStorage）---------- */
+const TOK = {
+  get A(){ return localStorage.getItem('ft_at')||''; },
+  set A(v){ v ? localStorage.setItem('ft_at', v) : localStorage.removeItem('ft_at'); },
+  get R(){ return localStorage.getItem('ft_rt')||''; },
+  set R(v){ v ? localStorage.setItem('ft_rt', v) : localStorage.removeItem('ft_rt'); },
+  clear(){ this.A=''; this.R=''; },
+};
+
+/* ---------- API 客户端：自动 JWT / 解包 / 401 refresh / 重放 ---------- */
+let _refreshing = null;   // 并发 refresh 合并
+async function api(path, { method='GET', body=null, token=null, raw=false } = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  const bearer = token || TOK.A;
+  if (bearer) headers.Authorization = `Bearer ${bearer}`;
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    method, headers, body: body ? JSON.stringify(body) : undefined,
+  });
+
+  // 401：尝试 refresh，然后重放
+  if (res.status === 401 && bearer === TOK.A && TOK.R) {
+    try {
+      if (!_refreshing) _refreshing = (async () => {
+        const rr = await fetch(`${API_BASE}/auth/refresh`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({ refresh_token: TOK.R })
+        });
+        const rjson = await rr.json().catch(()=>({}));
+        if (rr.ok && rjson.code===0 && rjson.data?.access_token) {
+          TOK.A = rjson.data.access_token;
+          if (rjson.data.refresh_token) TOK.R = rjson.data.refresh_token;
+          return true;
+        }
+        TOK.clear();
+        return false;
+      })();
+      const ok = await _refreshing;
+      _refreshing = null;
+      if (ok && bearer!==TOK.A) {
+        return api(path, { method, body, raw, token: TOK.A });  // 重放（传新 token + 保留 raw）
+      }
+    } catch (e) { /* 忽略 */ }
+  }
+
+  let data = null;
+  try { data = await res.json(); } catch(_) {}
+
+  if (!res.ok || (data && typeof data.code==='number' && data.code!==0)) {
+    const msg = (data && (data.message || data.detail || data.error)) || `HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.code = data?.code;
+    throw err;
+  }
+  return raw ? data : (data?.data ?? data);
+}
+
+const TASTE_OPTIONS = ['辣','甜','酸','咸','清淡','油腻','清爽','都行'];
+const COOKWARE_OPTIONS = ['炒锅','蒸锅','电饭煲','微波炉','烤箱','空气炸锅','电煮锅','高压锅','平底锅','汤锅'];
+// v2.1 Onboarding 扩展枚举
+const MBTI_OPTIONS = [
+  'INTJ','INTP','ENTJ','ENTP',
+  'INFJ','INFP','ENFJ','ENFP',
+  'ISTJ','ISFJ','ESTJ','ESFJ',
+  'ISTP','ISFP','ESTP','ESFP'
+];
+const BUDGET_OPTIONS = ['0~15','16~25','26~50','51~100','101~150','151~200','201及以上'];
+const COOKING_SKILL_OPTIONS = [
+  '完全不会',
+  '会烧水/泡面',
+  '会煮面条/粥',
+  '一般会做点（炒简单菜）',
+  '熟练（能做一桌家常菜）',
+  '精通（会做复杂硬菜）',
+  '专业水平（可媲美厨师）',
+  '厨师/餐饮从业者'
+];
+const CUISINE_OPTIONS = ['川菜','粤菜','鲁菜','苏菜','浙菜','闽菜','湘菜','徽菜','东北菜','西北菜','云南菜','贵州菜','新疆菜','西藏菜','北京菜','上海菜','广东早茶','港式茶餐','日式','韩式','东南亚','意式','法式','美式','墨西哥','中东','其他菜系'];
+// 忌口食材三级树：一级大类 → 二级小类 → 食材列表
+const DISLIKED_TREE = [
+  { name:'蔬菜', children:[
+    { name:'叶菜类', children:['菠菜','油麦菜','生菜','白菜','娃娃菜','空心菜','韭菜','芹菜','香菜','茼蒿','上海青','芥蓝'] },
+    { name:'根茎类', children:['土豆','胡萝卜','白萝卜','红薯','山药','藕','芋头','洋葱','生姜','大蒜'] },
+    { name:'瓜茄类', children:['西红柿','黄瓜','茄子','苦瓜','冬瓜','南瓜','丝瓜','西葫芦','青椒','彩椒'] },
+    { name:'菌菇类', children:['香菇','平菇','金针菇','杏鲍菇','木耳','银耳','口蘑','茶树菇','草菇','鸡腿菇'] },
+    { name:'豆荚类', children:['豌豆','豆角','四季豆','荷兰豆','毛豆','蚕豆','扁豆'] },
+    { name:'其他', __custom:true, children:[] }
+  ]},
+  { name:'肉蛋', children:[
+    { name:'畜肉', children:['猪肉','牛肉','羊肉','驴肉','马肉','培根','香肠','腊肉','火腿','午餐肉'] },
+    { name:'禽肉', children:['鸡肉','鸭肉','鹅肉','鸽子肉','鸡翅','鸡爪','鸭脖','内脏类'] },
+    { name:'内脏/加工', children:['猪肝','猪心','猪脑','鸭血','毛肚','百叶','黄喉','肥肠','肘子','猪蹄'] },
+    { name:'蛋/奶', children:['鸡蛋','鸭蛋','鹌鹑蛋','皮蛋','咸蛋','牛奶','羊奶','酸奶','奶酪','黄油'] },
+    { name:'其他', __custom:true, children:[] }
+  ]},
+  { name:'水产海鲜', children:[
+    { name:'鱼类', children:['草鱼','鲤鱼','鲫鱼','带鱼','鲈鱼','三文鱼','金枪鱼','鳕鱼','黄花鱼','鳗鱼','秋刀鱼','沙丁鱼','河豚'] },
+    { name:'虾蟹', children:['大虾','基围虾','小龙虾','皮皮虾','螃蟹','梭子蟹','帝王蟹','河虾'] },
+    { name:'贝类/软体', children:['扇贝','生蚝','花蛤','蛏子','鲍鱼','鱿鱼','章鱼','墨鱼','海螺','海参','海蜇'] },
+    { name:'其他', __custom:true, children:[] }
+  ]},
+  { name:'主食/谷物', children:[
+    { name:'米类', children:['米饭','糯米','黑米','糙米','小米'] },
+    { name:'面类', children:['面条','馒头','包子','饺子','烙饼','手抓饼','面包','吐司','米粉','米线','方便面'] },
+    { name:'杂粮/豆', children:['燕麦','玉米','藜麦','绿豆','红豆','黑豆','黄豆','花生','芝麻'] },
+    { name:'其他', __custom:true, children:[] }
+  ]},
+  { name:'调料/辛香', children:[
+    { name:'基础调味', children:['盐','酱油','醋','糖','味精','鸡精','蚝油','生抽','老抽','料酒','豆瓣酱'] },
+    { name:'辛辣刺激', children:['辣椒','花椒','胡椒','芥末','咖喱','麻椒','八角','桂皮','孜然','香菜','大蒜','韭菜','葱'] },
+    { name:'其他', __custom:true, children:[] }
+  ]},
+  { name:'水果/坚果', children:[
+    { name:'水果', children:['苹果','香蕉','橙子','橘子','葡萄','西瓜','桃子','草莓','芒果','菠萝','柠檬','猕猴桃','榴莲','火龙果','梨','柿子'] },
+    { name:'坚果', children:['核桃','杏仁','腰果','开心果','夏威夷果','巴旦木','栗子','榛子','松子'] },
+    { name:'其他', __custom:true, children:[] }
+  ]},
+  { name:'饮品/甜品', children:[
+    { name:'饮品', children:['奶茶','咖啡','可乐','碳酸饮料','豆浆','果汁','啤酒','白酒','红酒','茶'] },
+    { name:'甜食', children:['蛋糕','巧克力','冰淇淋','糖果','布丁','蛋挞','饼干','月饼','汤圆','年糕'] },
+    { name:'其他', __custom:true, children:[] }
+  ]},
+  { name:'其他', children:[
+    { name:'过敏原', children:['花生','坚果','海鲜','牛奶','鸡蛋','麸质/小麦','大豆','芒果','菠萝','猕猴桃'] },
+    { name:'宗教/习俗', children:['猪肉','牛肉','羊肉','五辛','动物血','酒精','所有肉类（素食）'] },
+    { name:'其他', __custom:true, children:[] }
+  ]}
+];
+// 星座/属相计算（供出生日期选择时实时显示小字）
+// 与后端 calc_zodiac 算法保持一致：边界递进法
+const _ZODIAC_BOUNDARIES = [
+  [1,20,'水瓶座'], [2,19,'双鱼座'], [3,21,'白羊座'],
+  [4,20,'金牛座'], [5,21,'双子座'], [6,22,'巨蟹座'],
+  [7,23,'狮子座'], [8,23,'处女座'], [9,23,'天秤座'],
+  [10,24,'天蝎座'], [11,23,'射手座'], [12,22,'摩羯座'],
+];
+const _CHINESE_ZODIAC = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
+function _calcZodiacFromBirth(dateStr) {
+  if (!dateStr) return {zodiac:'', chinese:''};
+  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(dateStr);
+  if (!m) return {zodiac:'', chinese:''};
+  const y = +m[1], mo = +m[2], d = +m[3];
+  let zodiac = '摩羯座';
+  for (const [bm, bd, name] of _ZODIAC_BOUNDARIES) {
+    if ((mo > bm) || (mo === bm && d >= bd)) zodiac = name;
+  }
+  const chiIdx = ((y - 4) % 12 + 12) % 12;
+  return {zodiac, chinese: _CHINESE_ZODIAC[chiIdx]};
+}
+
+const App = {
+  setup() {
+    /* ============================================================
+     * Hash Router + Auth Guard
+     * ============================================================ */
+    const route = reactive(hashToRoute());
+    function applyRoute(r) {
+      route.name = r.name;
+      route.path = r.path;
+      route.label = r.label || r.name;
+      route.parentLabel = r.parentLabel || '';
+      route.parentPath = r.parentPath || '';
+      route.icon = r.icon || '';
+      route.public = !!r.public;
+    }
+    function navigate(path) {
+      navigateToHash(path);
+    }
+    function onHashChange() {
+      const r = hashToRoute();
+      // --- Auth Guard ---
+      if (r.public) {
+        // 已登录用户访问 login/register 时自动跳首页
+        if (TOK.A && me.value) {
+          navigateToHash(DEFAULT_LOGGED_IN);
+          return;
+        }
+        applyRoute(r);
+        return;
+      }
+      // 私域路由：无 token → 去 login，并保留 intent
+      if (!TOK.A) {
+        // 不存在的路径也当作意图（仅忽略 404 / 首页 本身）
+        if (r.path !== DEFAULT_LOGGED_IN) {
+          sessionStorage.setItem('ft_redirect', r.path);
+        }
+        navigateToHash(DEFAULT_PUBLIC);
+        return;
+      }
+      // 404：已登录下展示 404 视图（不再强跳首页）
+      applyRoute(r);
+    }
+    window.addEventListener('hashchange', onHashChange);
+
+    /* ---- state ---- */
+    const authTab = ref('login');
+    const authError = ref('');
+    const authLoading = ref(false);
+    const loginForm = reactive({ username:'', password:'' });
+    const regForm = reactive({ username:'', phone:'', password:'' });
+    const me = ref(null);
+    const env = ref('dev');
+    const quota = reactive({});
+
+    const toast = reactive({ show:false, msg:'', type:'success' });
+    let toastTimer = null;
+    const showToast = (msg, type='success') => {
+      toast.msg = msg; toast.type = type; toast.show = true;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(()=>toast.show=false, 2600);
+    };
+    const modal = reactive({ show:false, title:'', body:'', onOk:null });
+    function confirmDialog(title, body, onOk) {
+      modal.title = title; modal.body = body; modal.onOk = onOk; modal.show = true;
+    }
+
+    const loading = reactive({ bulkIng:false, shopping:false });
+
+    const recipeQuotaPercent = computed(()=>{
+      const u = quota.LLM_RECIPES_QUOTA||0, t = quota.LLM_RECIPES_TOTAL||10;
+      return Math.min(100, Math.round((u/t)*100));
+    });
+    const fortuneQuotaPercent = computed(()=>{
+      const u = quota.LLM_FORTUNE_QUOTA||0, t = quota.LLM_FORTUNE_TOTAL||10;
+      return Math.min(100, Math.round((u/t)*100));
+    });
+    const chatQuotaPercent = computed(()=>{
+      const u = quota.LLM_CHAT_QUOTA||0, t = quota.LLM_CHAT_TOTAL||10;
+      return Math.min(100, Math.round((u/t)*100));
+    });
+
+    /* ---- Cook state ---- */
+    const categories = CATEGORIES;
+    const catClass = k => CAT_CLASS[k] || 'other';
+    const catMap = computed(()=>['蔬菜','肉蛋','水产','主食','调料','乳制品','其他']);
+    const ingredients = ref([]);
+    const newIng = reactive({ name:'', category:'蔬菜', quantity:'1', unit:'份' });
+    const basketIds = reactive(new Set());
+    const basket = computed(()=>Object.fromEntries(ingredients.value.map(i=>[i.id,i])));
+    const recipes = ref([]);
+
+    const availableIngredients = computed(()=>
+      ingredients.value.filter(i => i.status !== 'expired' && i.status !== 'used_up')
+    );
+    const expiredCount = computed(() => ingredients.value.filter(i => i.status==='expired').length);
+    const expiringCount = computed(() => ingredients.value.filter(i => i.status!=='expired' && i.status!=='used_up' && isExpiring(i)).length);
+    function isExpiring(ing) {
+      if (!ing.expiry_date) return false;
+      const d = new Date(ing.expiry_date + 'T00:00:00');
+      const now = new Date(); now.setHours(0,0,0,0);
+      const diff = Math.ceil((d - now)/86400000);
+      return diff >= 0 && diff <= 3;
+    }
+    function daysLeft(ing) {
+      if (!ing.expiry_date) return '-';
+      const d = new Date(ing.expiry_date + 'T00:00:00');
+      const now = new Date(); now.setHours(0,0,0,0);
+      return Math.ceil((d - now)/86400000);
+    }
+
+    /* ---- Order state ---- */
+    const fortune = ref(null);
+    const chatSession = ref(null);
+    const chatRound = ref(0);
+    const chatMsgs = ref([]);
+    const lastQuestion = ref(null);
+    const finalRecommend = ref(null);
+
+    /* ---- Diary state ---- */
+    const stats = ref({});
+    const diaryList = ref([]);
+    const diaryFilter = ref('');
+    const filteredDiary = computed(() => diaryFilter.value ? diaryList.value.filter(d=>d.type===diaryFilter.value) : diaryList.value);
+    const recentDiary = computed(() => diaryList.value.slice(0,5));
+    const prefWeights = ref([]);
+    const heatmap = reactive({});  // { 'YYYY-MM-DD': 'cook'|'order'|'both' }
+    const todayStr = new Date().toISOString().slice(0,10);
+    const currentYearMonth = computed(()=>`${todayStr.slice(0,4)}年${todayStr.slice(5,7)}月`);
+    const heatmapDays = computed(()=>{
+      const [y,m]=todayStr.split('-').map(Number);
+      const first=new Date(y,m-1,1), last=new Date(y,m,0);
+      const firstWk=(first.getDay()+6)%7;
+      const days=[];
+      for(let i=0;i<firstWk;i++) days.push(null);
+      for(let d=1; d<=last.getDate(); d++){
+        const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        days.push({ day:d, date:ds, type: heatmap[ds]||'', isToday: ds===todayStr });
+      }
+      return days.filter(Boolean);
+    });
+
+    /* ---- Shopping state ---- */
+    const shoppingList = ref([]);
+    const shopFilter = ref('');
+    const newShop = reactive({ name:'', quantity:'', category:'其他' });
+    const shoppingPendingCount = computed(()=> shoppingList.value.filter(s=>!s.checked).length);
+    const shoppingCheckedCount = computed(()=> shoppingList.value.filter(s=>s.checked).length);
+    const filteredShopping = computed(()=>{
+      if (shopFilter.value==='pending') return shoppingList.value.filter(s=>!s.checked);
+      if (shopFilter.value==='checked') return shoppingList.value.filter(s=>s.checked);
+      return shoppingList.value;
+    });
+
+    /* ---- Ingredients filter ---- */
+    const ingFilter = reactive({ status:'', category:'', search:'' });
+    const ingForm = reactive({ editingId:null, name:'', category:'蔬菜', quantity:'', expiry_date:'' });
+    function ingFormReset() {
+      ingForm.editingId = null; ingForm.name=''; ingForm.category='蔬菜'; ingForm.quantity=''; ingForm.expiry_date='';
+    }
+    const filteredIngredients = computed(()=>{
+      let list = ingredients.value;
+      const s = ingFilter.status;
+      if (s==='available') list = list.filter(i => i.status!=='expired' && i.status!=='used_up');
+      else if (s==='expiring') list = list.filter(i => i.status!=='expired' && i.status!=='used_up' && isExpiring(i));
+      else if (s) list = list.filter(i => i.status===s);
+      if (ingFilter.category) list = list.filter(i => i.category===ingFilter.category);
+      if (ingFilter.search) {
+        const q = ingFilter.search.trim().toLowerCase();
+        list = list.filter(i => (i.name||'').toLowerCase().includes(q));
+      }
+      return list;
+    });
+
+    /* ---- Settings / password ---- */
+    const pwdForm = reactive({ old:'', pwd:'', pwd2:'', loading:false, error:'', success:'', changed:false });
+    const tasteOptions = TASTE_OPTIONS;
+    const cookwareOptions = COOKWARE_OPTIONS;
+    const onboarding = reactive({
+      completed:false, zodiac:'', chinese_zodiac:'', mbti:'',
+      taste_preference:'都行', birth_date: new Date(Date.now()-25*365*86400000).toISOString().slice(0,10),
+      budget_level: BUDGET_OPTIONS[1],
+      cooking_skill: COOKING_SKILL_OPTIONS[3],
+      cookware: [],
+      disliked_ingredients: [],
+      cuisines: [],
+      _disliked_new: '',
+      _cuisine_other_show: false,
+      _cuisine_other_input: '',
+      _custom_disliked: {},    // { "L1/L2": [自定义项...] }
+      _custom_disliked_refs: {},
+    });
+    const onboardingLoading = ref(false);
+    const onboardingSaving = ref(false);
+
+    // ---- 实时星座/属相（需求 #1）----
+    const liveZodiac = computed(() => _calcZodiacFromBirth(onboarding.birth_date).zodiac);
+    const liveChinese = computed(() => _calcZodiacFromBirth(onboarding.birth_date).chinese);
+
+    // ---- 通用数组操作 ----
+    function toggleArr(arr, v){
+      const i = arr.indexOf(v);
+      if (i>=0) arr.splice(i,1); else arr.push(v);
+    }
+    function removeArr(arr, v){
+      const i = arr.indexOf(v); if (i>=0) arr.splice(i,1);
+    }
+
+    // ---- 菜系自定义 ----
+    function addCustomCuisine() {
+      const v = (onboarding._cuisine_other_input || '').trim();
+      if (!v) return;
+      if (!onboarding.cuisines.includes(v)) onboarding.cuisines.push(v);
+      onboarding._cuisine_other_input = '';
+      onboarding._cuisine_other_show = false;
+    }
+
+    // ---- 忌口三级树辅助 ----
+    function dislikeTreePathKey(L1, L2) { return L1 + '/' + L2; }
+    function countDislikedInL2(L2) {
+      if (L2.__custom) {
+        // 自定义项也计入
+        return 0;
+      }
+      let c = 0;
+      for (const it of L2.children || []) {
+        if (onboarding.disliked_ingredients.includes(it)) c++;
+      }
+      return c;
+    }
+    function countDislikedInL1(L1) {
+      let c = 0;
+      for (const L2 of L1.children || []) c += countDislikedInL2(L2);
+      // 加上该大类下"其他"自定义的数量
+      for (const L2 of L1.children || []) {
+        if (L2.__custom) {
+          const key = dislikeTreePathKey(L1.name, L2.name);
+          c += (onboarding._custom_disliked[key] || []).length;
+        }
+      }
+      return c;
+    }
+    function addCustomDisliked(L1, L2, inputEl) {
+      const key = dislikeTreePathKey(L1, L2);
+      const raw = inputEl && typeof inputEl.value === 'string' ? inputEl.value : '';
+      const v = raw.trim();
+      if (!v) return;
+      if (!onboarding._custom_disliked[key]) onboarding._custom_disliked[key] = [];
+      if (!onboarding._custom_disliked[key].includes(v)) onboarding._custom_disliked[key].push(v);
+      if (!onboarding.disliked_ingredients.includes(v)) onboarding.disliked_ingredients.push(v);
+      if (inputEl) inputEl.value = '';
+    }
+    function removeCustomDisliked(L1, L2, idx, item) {
+      const key = dislikeTreePathKey(L1, L2);
+      const arr = onboarding._custom_disliked[key] || [];
+      if (arr[idx] === item) arr.splice(idx, 1);
+      // 同步从总忌口列表移除（如果是同名字项）
+      removeArr(onboarding.disliked_ingredients, item);
+    }
+
+    function addDislike(){
+      const v = onboarding._disliked_new.trim();
+      if (v && !onboarding.disliked_ingredients.includes(v)) onboarding.disliked_ingredients.push(v);
+      onboarding._disliked_new = '';
+    }
+
+    /* ============================================================
+     * Auth Logic
+     * ============================================================ */
+    async function submitLogin() {
+      if (!loginForm.username.trim() || !loginForm.password) {
+        authError.value = '请填写用户名和密码'; return;
+      }
+      authLoading.value = true; authError.value='';
+      try {
+        const tok = await api('/auth/login', { method:'POST', body: loginForm });
+        TOK.A = tok.access_token; TOK.R = tok.refresh_token;
+        loginForm.password='';
+        await reloadMe();
+        // 登录后跳转到保存的 intent 或 dashboard
+        const redirect = sessionStorage.getItem('ft_redirect') || DEFAULT_LOGGED_IN;
+        sessionStorage.removeItem('ft_redirect');
+        showToast(`欢迎回来, ${tok.user?.username || '用户'}！`);
+        navigate(redirect);
+      } catch(e) { authError.value = e.message; }
+      finally { authLoading.value=false; }
+    }
+    async function submitRegister() {
+      const u=regForm.username.trim(), p=regForm.password, ph=regForm.phone.trim();
+      if (u.length<3||u.length>50){ authError.value='用户名长度 3-50'; return; }
+      if (p.length<6){ authError.value='密码至少 6 位'; return; }
+      authLoading.value=true; authError.value='';
+      const payload = { username:u, password:p };
+      if (ph) payload.phone=ph;
+      try {
+        const tok = await api('/auth/register', { method:'POST', body: payload });
+        TOK.A = tok.access_token; TOK.R = tok.refresh_token;
+        Object.assign(regForm,{username:'',phone:'',password:''});
+        await reloadMe();
+        showToast('账户创建成功, 已自动登录！','success');
+        navigate(DEFAULT_LOGGED_IN);
+      } catch(e) { authError.value = e.message; }
+      finally { authLoading.value=false; }
+    }
+    async function reloadMe() {
+      try {
+        const data = await api('/auth/me');
+        // auth/me 返回 user_id/username/... + quota
+        me.value = Object.assign({}, data.user || data, {
+          user_id: (data.user && data.user.user_id) || data.user_id || (data.user && data.user.id) || null,
+        });
+        // 兼容映射：后端返回嵌套 {recipe:{used,limit,remaining},...}，前端模板使用扁平字段
+        const q = data.quota || {};
+        Object.assign(quota, {
+          LLM_RECIPES_QUOTA: q.recipe?.used ?? 0,
+          LLM_RECIPES_TOTAL: q.recipe?.limit ?? 100,
+          LLM_FORTUNE_QUOTA: q.fortune?.used ?? 0,
+          LLM_FORTUNE_TOTAL: q.fortune?.limit ?? 10,
+          LLM_CHAT_QUOTA: q.chat?.used ?? 0,
+          LLM_CHAT_TOTAL: q.chat?.limit ?? 50,
+        });
+        env.value = q.env || 'dev';
+        // 登录后触发各模块加载
+        await Promise.allSettled([
+          loadIngredients(), loadStats(), loadHeatmap(), loadPrefWeights(), loadDiaryList(),
+          loadShopping(), loadOnboarding(), loadUserProfile(),
+        ]);
+        return true;
+      } catch(e) {
+        TOK.clear(); me.value=null; return false;
+      }
+    }
+    function logout() {
+      confirmDialog('确认退出？', '退出后需要重新登录才能使用。', ()=>{
+        TOK.clear(); me.value=null;
+        // 清空状态
+        ingredients.value=[]; recipes.value=[]; basketIds.clear();
+        fortune.value=null; resetChat();
+        stats.value={}; diaryList.value=[]; prefWeights.value=[]; Object.keys(heatmap).forEach(k=>delete heatmap[k]);
+        shoppingList.value=[];
+        modal.show=false;
+        showToast('已安全退出登录','success');
+        navigate(DEFAULT_PUBLIC);
+      });
+    }
+
+    async function loadUserProfile() {
+      if (!me.value) return;
+      try {
+        const uid = me.value.user_id || me.value.id;
+        const p = await api(`/user/${uid}`);
+        Object.assign(me.value, p);
+      } catch(e){ console.warn('load profile',e); }
+    }
+
+    /* ============================================================
+     * Cook Logic
+     * ============================================================ */
+    async function loadIngredients() {
+      if (!me.value) return;
+      loading.ingredients = true;
+      try {
+        const uid = me.value.user_id || me.value.id;
+        const list = await api(`/ingredients/${uid}?page_size=100`);
+        ingredients.value = list.items || list || [];
+      } catch(e){ showToast('加载冰箱失败：'+e.message,'error'); }
+      finally { loading.ingredients=false; }
+    }
+    async function addIngredient() {
+      if (!me.value) return;
+      const name = newIng.name.trim(); if (!name) return;
+      try {
+        const ing = await api('/ingredients', {
+          method:'POST',
+          body: {
+            user_id: me.value.user_id || me.value.id,
+            name, category: newIng.category,
+            quantity:newIng.quantity||'1',
+            unit:newIng.unit||'份'
+          }
+        });
+        ingredients.value.unshift(ing);
+        newIng.name='';
+        showToast('已加入冰箱 ✓','success');
+      } catch(e){ showToast(e.message,'error'); }
+    }
+    async function deleteIngredient(ing) {
+      confirmDialog('删除食材？', `确认删除「${ing.name}」？该操作不可撤销。`, async ()=>{
+        try {
+          await api(`/ingredients/${ing.id}`, { method:'DELETE' });
+          ingredients.value = ingredients.value.filter(x=>x.id!==ing.id);
+          basketIds.delete(ing.id);
+          showToast('已删除','success');
+        } catch(e){ showToast('删除失败：'+e.message,'error'); }
+        finally { modal.show=false; }
+      });
+    }
+    function toggleBasket(ing) {
+      if (ing.status==='expired' || ing.status==='used_up') {
+        showToast('该食材不可用：'+ (ing.status==='expired'?'已过期':'已用完'),'error');
+        return;
+      }
+      basketIds.has(ing.id) ? basketIds.delete(ing.id) : basketIds.add(ing.id);
+    }
+    async function recommendRecipes() {
+      if (basketIds.size===0 || !me.value) return;
+      loading.recipes=true; recipes.value=[];
+      try {
+        const list = [...basketIds].map(id => basket.value[id].name);
+        const res = await api('/recipes/recommend', {
+          method:'POST',
+          body:{ user_id: me.value.user_id || me.value.id, ingredient_names: list }
+        });
+        recipes.value = res.recipes || [];
+        showToast(`LLM 返回 ${recipes.value.length} 道菜谱 ✓`,'success');
+      } catch(e) {
+        showToast('推荐失败：'+e.message,'error');
+      } finally { loading.recipes=false; }
+    }
+    async function saveCookRecord(r) {
+      try {
+        await api('/diary/cook', {
+          method:'POST',
+          body:{
+            user_id: me.value.user_id || me.value.id,
+            recipe_name: r.name,
+            ingredients_used: r.matched_ingredients || [],
+            missing_ingredients: r.missing_ingredients || [],
+            ai_recommend_id: r.cache_id || '',
+            estimated_cost: _parseCost(r.estimated_cost),
+            cooking_time: r.cooking_time || '',
+            steps: r.steps || [],
+            feedback: '好吃',
+          }
+        });
+        showToast('✅ 已记录为今日做饭！偏好权重已更新');
+        await refreshDashboard();
+      } catch(e) { showToast('记录失败：'+e.message,'error'); }
+    }
+    async function addToShopping(items) {
+      try {
+        for (const name of items) {
+          await api('/shopping', {
+            method:'POST',
+            body:{ user_id: me.value.user_id || me.value.id, name, category: '其他', quantity:'1', priority:'normal' }
+          });
+        }
+        showToast(`已将 ${items.length} 项加入购物单`,'success');
+        await loadShopping();
+      } catch(e) { showToast('加入购物单失败：'+e.message,'error'); }
+    }
+    function _parseCost(s) {
+      if (!s) return 0;
+      const m = String(s).match(/[\d.]+/);
+      return m ? parseFloat(m[0]) : 0;
+    }
+
+
+    function editIngredient(ing) {
+      ingForm.editingId = ing.id;
+      ingForm.name = ing.name;
+      ingForm.category = ing.category || '蔬菜';
+      ingForm.quantity = ing.quantity || '';
+      ingForm.expiry_date = ing.expiry_date || '';
+      // 滚动到新增区域
+      document.querySelector('.input-row && .ing-table-head') || window.scrollTo({top:0,behavior:'smooth'});
+    }
+    async function ingFormSubmit() {
+      if (!ingForm.name.trim()) return;
+      if (!me.value) return;
+      try {
+        const uid = me.value.user_id || me.value.id;
+        if (ingForm.editingId) {
+          const payload = { name: ingForm.name.trim(), category: ingForm.category, quantity: ingForm.quantity };
+          if (ingForm.expiry_date) payload.expiry_date = ingForm.expiry_date;
+          const updated = await api(`/ingredients/${ingForm.editingId}`, { method:'PUT', body: payload });
+          const idx = ingredients.value.findIndex(x=>x.id===ingForm.editingId);
+          if (idx>=0) ingredients.value.splice(idx,1,updated);
+          showToast('食材已更新 ✓','success');
+        } else {
+          const payload = { user_id: uid, name: ingForm.name.trim(), category: ingForm.category, quantity: ingForm.quantity || '1' };
+          if (ingForm.expiry_date) payload.expiry_date = ingForm.expiry_date;
+          const ing = await api('/ingredients', { method:'POST', body: payload });
+          ingredients.value.unshift(ing);
+          showToast('食材已添加 ✓','success');
+        }
+        ingFormReset();
+      } catch(e) { showToast(e.message,'error'); }
+    }
+    async function markIngredient(ing, status) {
+      try {
+        const updated = await api(`/ingredients/${ing.id}`, { method:'PUT', body:{ status } });
+        const idx = ingredients.value.findIndex(x=>x.id===ing.id);
+        if (idx>=0) ingredients.value.splice(idx,1,updated);
+        showToast('状态已更新 ✓','success');
+      } catch(e) { showToast(e.message,'error'); }
+    }
+    async function refreshDashboard() {
+      await Promise.allSettled([loadStats(), loadHeatmap(), loadDiaryList(), loadPrefWeights()]);
+    }
+
+    /* ============================================================
+     * Order Logic
+     * ============================================================ */
+    async function drawFortune() {
+      if (!me.value) return;
+      try {
+        const uid = me.value.user_id || me.value.id;
+        fortune.value = await api(`/fortune/today/${uid}`);
+      } catch(e) { showToast('运势获取失败：'+e.message,'error'); }
+    }
+    async function startChat() {
+      if (!me.value) return;
+      loading.chatStart = true;
+      try {
+        const uid = me.value.user_id || me.value.id;
+        const r = await api('/chat/session', { method:'POST', body:{ user_id: uid } });
+        chatSession.value = r.session_id;
+        chatRound.value = r.current_round || 1;
+        chatMsgs.value = [{ id:Date.now(), role:'ai', text: r.question }];
+        lastQuestion.value = { dimension: r.dimension, question: r.question, options: r.options };
+        finalRecommend.value = null;
+      } catch(e) { showToast('创建会话失败：'+e.message,'error'); }
+      finally { loading.chatStart=false; await nextTick(scrollChat); }
+    }
+    async function sendAnswer(opt) {
+      if (!chatSession.value) return;
+      chatMsgs.value.push({ id:Date.now()+Math.random(), role:'user', text:opt });
+      lastQuestion.value = null;
+      loading.chatTurn = true;
+      try {
+        const uid = me.value.user_id || me.value.id;
+        const r = await api('/chat/turn', {
+          method:'POST',
+          body:{ session_id: chatSession.value, user_id: uid, answer: opt }
+        });
+        if (r.final_recommend) {
+          finalRecommend.value = r;
+          chatMsgs.value.push({ id:Date.now()+2, role:'ai', text: '🎯 最终推荐：'+r.final_recommend+'\n理由：'+r.recommend_reason });
+        } else {
+          chatRound.value = r.current_round;
+          chatMsgs.value.push({ id:Date.now()+1, role:'ai', text: r.question });
+          lastQuestion.value = { dimension: r.dimension, question: r.question, options: r.options };
+        }
+      } catch(e) { showToast('对话失败：'+e.message,'error'); chatMsgs.value.pop(); }
+      finally { loading.chatTurn=false; await nextTick(scrollChat); }
+    }
+    function resetChat() {
+      chatSession.value=null; chatRound.value=0; chatMsgs.value=[]; lastQuestion.value=null; finalRecommend.value=null;
+    }
+    async function saveTakeout(r, fb) {
+      try {
+        const uid = me.value.user_id || me.value.id;
+        await api('/diary/takeout', {
+          method:'POST',
+          body:{
+            user_id: uid,
+            takeout_name: r.final_recommend,
+            platform: 'meituan',
+            estimated_cost: 0,
+            alternatives: r.alternatives || [],
+            feedback: fb,
+          }
+        });
+        showToast(`反馈「${fb}」已记录，偏好模型已更新 ✓`);
+        await refreshDashboard();
+      } catch(e) { showToast('记录失败：'+e.message,'error'); }
+    }
+    const chatBox = ref(null);
+    function scrollChat(){ if (chatBox.value) chatBox.value.scrollTop = chatBox.value.scrollHeight; }
+
+    /* ============================================================
+     * Diary Logic
+     * ============================================================ */
+    async function loadStats() {
+      if (!me.value) return;
+      try {
+        const uid = me.value.user_id || me.value.id;
+        stats.value = await api(`/diary/stats/${uid}`) || {};
+      } catch(e) { console.warn(e); }
+    }
+    async function loadHeatmap() {
+      if (!me.value) return;
+      try {
+        const uid = me.value.user_id || me.value.id;
+        const list = await api(`/diary/heatmap/${uid}`) || [];
+        Object.keys(heatmap).forEach(k=>delete heatmap[k]);
+        for (const d of list) heatmap[d.date] = d.type;
+      } catch(e){ console.warn(e); }
+    }
+    async function loadPrefWeights() {
+      if (!me.value) return;
+      try {
+        const uid = me.value.user_id || me.value.id;
+        prefWeights.value = await api(`/preferences/weights/${uid}`) || [];
+      } catch(e) { console.warn(e); }
+    }
+    async function loadDiaryList() {
+      if (!me.value) return;
+      try {
+        const uid = me.value.user_id || me.value.id;
+        const r = await api(`/diary/list/${uid}?page_size=50`);
+        diaryList.value = r.items || r || [];
+      } catch(e) { console.warn(e); }
+    }
+
+    /* ============================================================
+     * Shopping Logic
+     * ============================================================ */
+    async function loadShopping() {
+      if (!me.value) return;
+      loading.shopping = true;
+      try {
+        const uid = me.value.user_id || me.value.id;
+        const r = await api(`/shopping/${uid}?page_size=100`);
+        shoppingList.value = r.items || r || [];
+      } catch(e) { console.warn('shopping',e); }
+      finally { loading.shopping=false; }
+    }
+    async function addShoppingItem() {
+      if (!me.value || !newShop.name.trim()) return;
+      try {
+        const uid = me.value.user_id || me.value.id;
+        const item = await api('/shopping', {
+          method:'POST',
+          body:{ user_id: uid, name: newShop.name.trim(), category: newShop.category || '其他', quantity: newShop.quantity || '' }
+        });
+        shoppingList.value.unshift(item);
+        newShop.name=''; newShop.quantity='';
+        showToast('已加入购物单 ✓','success');
+      } catch(e) { showToast(e.message,'error'); }
+    }
+    async function toggleShopItem(item) {
+      try {
+        const next = !item.checked;
+        const updated = await api(`/shopping/${item.id}`, { method:'PUT', body:{ checked: next } });
+        Object.assign(item, updated);
+      } catch(e) { showToast(e.message,'error'); }
+    }
+    async function deleteShopItem(item) {
+      confirmDialog('删除购物项？', `确认从购物单移除「${item.name}」？`, async ()=>{
+        try {
+          await api(`/shopping/${item.id}`, { method:'DELETE' });
+          shoppingList.value = shoppingList.value.filter(x=>x.id!==item.id);
+          showToast('已移除','success');
+        } catch(e) { showToast(e.message,'error'); }
+        finally { modal.show=false; }
+      });
+    }
+    async function clearCheckedShopping() {
+      const checked = shoppingList.value.filter(s=>s.checked);
+      if (checked.length===0) return;
+      confirmDialog('清空已勾选？', `将移除购物单中 ${checked.length} 项已购买条目。`, async ()=>{
+        try {
+          const ids = new Set(checked.map(x=>x.id));
+          for (const it of checked) { await api(`/shopping/${it.id}`,{method:'DELETE'}); }
+          shoppingList.value = shoppingList.value.filter(x=>!ids.has(x.id));
+          showToast('已清空已勾选','success');
+        } catch(e) { showToast(e.message,'error'); }
+        finally { modal.show=false; }
+      });
+    }
+    async function moveToIngredients(item) {
+      try {
+        const uid = me.value.user_id || me.value.id;
+        await api('/ingredients', { method:'POST', body:{
+          user_id: uid, name: item.name, category: item.category || '其他',
+          quantity: item.quantity || '1'
+        }});
+        await api(`/shopping/${item.id}`,{method:'DELETE'});
+        shoppingList.value = shoppingList.value.filter(x=>x.id!==item.id);
+        await loadIngredients();
+        showToast(`「${item.name}」已入库冰箱 ✓`,'success');
+      } catch(e) { showToast(e.message,'error'); }
+    }
+    async function bulkMoveCheckedToIngredients() {
+      const items = shoppingList.value.filter(s=>s.checked);
+      if (items.length===0) return;
+      loading.bulkIng = true;
+      let ok=0;
+      for (const it of items) {
+        try {
+          const uid = me.value.user_id || me.value.id;
+          await api('/ingredients', { method:'POST', body:{
+            user_id: uid, name: it.name, category: it.category || '其他', quantity: it.quantity || '1'
+          }});
+          await api(`/shopping/${it.id}`,{method:'DELETE'});
+          ok++;
+        } catch(e){}
+      }
+      loading.bulkIng=false;
+      await Promise.all([loadIngredients(), loadShopping()]);
+      showToast(`成功入库 ${ok}/${items.length} 项 ✓`,'success');
+    }
+
+    /* ============================================================
+     * Settings: Password + Onboarding
+     * ============================================================ */
+    async function changePassword() {
+      pwdForm.error=''; pwdForm.success='';
+      if (!pwdForm.old || !pwdForm.pwd || !pwdForm.pwd2) { pwdForm.error='请填写所有密码字段'; return; }
+      if (pwdForm.pwd.length < 6) { pwdForm.error='新密码至少 6 位'; return; }
+      if (pwdForm.pwd !== pwdForm.pwd2) { pwdForm.error='两次输入的新密码不一致'; return; }
+      if (pwdForm.pwd === pwdForm.old) { pwdForm.error='新密码不能与旧密码相同'; return; }
+      pwdForm.loading = true;
+      try {
+        await api('/auth/password', { method:'POST', body:{ old_password: pwdForm.old, new_password: pwdForm.pwd }});
+        pwdForm.success='密码修改成功！即将退出并重新登录（所有旧 Token 已失效）';
+        pwdForm.changed = true;
+        pwdForm.old=''; pwdForm.pwd=''; pwdForm.pwd2='';
+        showToast('密码已修改 ✓ 已失效所有旧登录','success');
+        // 模拟 2 秒后自动登出（符合 JWT token_valid_since）
+        setTimeout(()=>{
+          TOK.clear(); me.value=null;
+          showToast('出于安全考虑，请重新登录','error');
+          navigate(DEFAULT_PUBLIC);
+        }, 1800);
+      } catch(e) { pwdForm.error = e.message; }
+      finally { pwdForm.loading = false; }
+    }
+
+    async function loadOnboarding() {
+      if (!me.value) return;
+      onboardingLoading.value = true;
+      try {
+        const uid = me.value.user_id || me.value.id;
+        const p = await api(`/preferences/${uid}`) || {};
+        onboarding.completed = !!p.zodiac || !!p.chinese_zodiac || !!p.taste_preference;
+        onboarding.zodiac = p.zodiac || '';
+        onboarding.chinese_zodiac = p.chinese_zodiac || '';
+        onboarding.mbti = (p.mbti||'').toUpperCase();
+        onboarding.taste_preference = p.taste_preference || '都行';
+        // 预算 / 厨艺：后端已做兼容，前端也兜底确保下拉一定能选中
+        onboarding.budget_level = BUDGET_OPTIONS.includes(p.budget_level) ? p.budget_level
+          : ({'省钱':BUDGET_OPTIONS[0],'正常':BUDGET_OPTIONS[1],'吃好点':BUDGET_OPTIONS[3]})[p.budget_level]
+          || BUDGET_OPTIONS[1];
+        onboarding.cooking_skill = COOKING_SKILL_OPTIONS.includes(p.cooking_skill) ? p.cooking_skill
+          : ({'新手':COOKING_SKILL_OPTIONS[1],'一般':COOKING_SKILL_OPTIONS[3],'熟练':COOKING_SKILL_OPTIONS[4]})[p.cooking_skill]
+          || COOKING_SKILL_OPTIONS[3];
+        onboarding.cookware = Array.isArray(p.cookware)? [...p.cookware] : [];
+        onboarding.disliked_ingredients = Array.isArray(p.disliked_ingredients)? [...p.disliked_ingredients] : [];
+        onboarding.cuisines = Array.isArray(p.cuisines) ? [...p.cuisines] : [];
+        // 反查自定义忌口：不在树叶子里的视为自定义（挂到最顶部"其他/其他"方便用户看到）
+        const leafSet = new Set();
+        for (const L1 of DISLIKED_TREE) for (const L2 of L1.children) {
+          if (!L2.__custom) for (const it of L2.children||[]) leafSet.add(it);
+        }
+        const custKey = dislikeTreePathKey('其他','其他');
+        onboarding._custom_disliked = { [custKey]: [] };
+        for (const it of onboarding.disliked_ingredients) {
+          if (!leafSet.has(it)) onboarding._custom_disliked[custKey].push(it);
+        }
+      } catch(e){ console.warn(e); }
+      finally { onboardingLoading.value=false; }
+    }
+    async function saveOnboarding() {
+      if (!onboarding.birth_date) { showToast('请选择出生日期','error'); return; }
+      onboardingSaving.value = true;
+      try {
+        const uid = me.value.user_id || me.value.id;
+        const res = await api('/onboarding', { method:'POST', body:{
+          user_id: uid,
+          taste_preference: onboarding.taste_preference,
+          birth_date: onboarding.birth_date,
+          mbti: (onboarding.mbti||'').toUpperCase(),
+          disliked_ingredients: onboarding.disliked_ingredients || [],
+          cookware: onboarding.cookware || [],
+          budget_level: onboarding.budget_level,
+          cooking_skill: onboarding.cooking_skill,
+          cuisines: onboarding.cuisines || [],
+        }});
+        onboarding.completed = true;
+        if (res) {
+          onboarding.zodiac = res.zodiac || onboarding.zodiac;
+          onboarding.chinese_zodiac = res.chinese_zodiac || onboarding.chinese_zodiac;
+          onboarding.mbti = (res.mbti||onboarding.mbti||'').toUpperCase();
+          onboarding.budget_level = res.budget_level || onboarding.budget_level;
+          onboarding.cooking_skill = res.cooking_skill || onboarding.cooking_skill;
+          if (Array.isArray(res.cuisines)) onboarding.cuisines = res.cuisines;
+          if (Array.isArray(res.disliked_ingredients)) onboarding.disliked_ingredients = res.disliked_ingredients;
+        }
+        showToast(onboarding.completed ? '偏好档案已更新 ✓' : 'Onboarding 完成 ✓','success');
+      } catch(e) { showToast(e.message,'error'); }
+      finally { onboardingSaving.value=false; }
+    }
+
+    /* ============================================================
+     * Mount + Cleanup
+     * ============================================================ */
+    onMounted(async () => {
+      // 1) 先根据 hash 确定目标路由：已持有 token 就尝试恢复登录
+      if (TOK.A) {
+        const ok = await reloadMe();
+        if (!ok) {
+          // 登录态无效（token 过期且 refresh 失败）→ 清 token，跳到 login
+          TOK.clear();
+        }
+      }
+      // 2) 首次触发一次 hashchange，以执行 Auth Guard
+      onHashChange();
+      // 3) 启动 hashchange 监听已在 setup() 顶部安装
+    });
+    onBeforeUnmount(() => {
+      window.removeEventListener('hashchange', onHashChange);
+    });
+
+    const formatDate = s => s ? String(s).replace('T',' ').slice(0,16) : '-';
+
+    return {
+      // router
+      route, navigate, API_BASE,
+      // auth
+      authTab, authError, authLoading, loginForm, regForm,
+      submitLogin, submitRegister, me, env, quota, logout,
+      // layout / ui
+      toast, modal,
+      loading,
+      // dashboard quota
+      recipeQuotaPercent, fortuneQuotaPercent, chatQuotaPercent,
+      shoppingPendingCount, shoppingCheckedCount,
+      expiredCount, expiringCount,
+      // cook
+      categories, catClass, catMap, ingredients, newIng, basketIds, basket, recipes,
+      availableIngredients, isExpiring, daysLeft,
+      loadIngredients, addIngredient, deleteIngredient, toggleBasket, recommendRecipes, saveCookRecord, addToShopping,
+      editIngredient, ingFormReset, ingForm, ingFormSubmit, markIngredient,
+      // order
+      fortune, drawFortune,
+      chatSession, chatRound, chatMsgs, lastQuestion, finalRecommend, chatBox,
+      startChat, sendAnswer, resetChat, saveTakeout,
+      // diary
+      stats, diaryList, diaryFilter, filteredDiary, recentDiary, prefWeights, heatmapDays, currentYearMonth, formatDate,
+      // shopping
+      shoppingList, shopFilter, filteredShopping, newShop,
+      loadShopping, addShoppingItem, toggleShopItem, deleteShopItem, clearCheckedShopping, moveToIngredients, bulkMoveCheckedToIngredients,
+      // ingredients page filters
+      ingFilter, filteredIngredients,
+      // settings
+      pwdForm, changePassword,
+      tasteOptions, cookwareOptions, onboarding, onboardingLoading, onboardingSaving,
+      BUDGET_OPTIONS, COOKING_SKILL_OPTIONS, CUISINE_OPTIONS, DISLIKED_TREE,
+      liveZodiac, liveChinese,
+      toggleArr, removeArr, addDislike, loadOnboarding, saveOnboarding,
+      addCustomCuisine, dislikeTreePathKey, countDislikedInL1, countDislikedInL2,
+      addCustomDisliked, removeCustomDisliked,
+    };
+  }
+};
+
+createApp(App).mount('#app');
+  }  // end boot()
+
+  // ====== Vue Ready 轮询（10s 超时）======
+  var MAX_MS = 10000;
+  var started = Date.now();
+  var t = setInterval(function () {
+    if (vueReady()) {
+      clearInterval(t);
+      try { boot(); }
+      catch (e) {
+        console.error('FoodTime boot error:', e);
+        showFatal('前端启动异常：' + (e && e.message ? e.message : String(e)));
+      }
+      return;
+    }
+    // 每 3s 没 ready 就再追加一次 CDN
+    if (Date.now() - started > 3000 && fallbackCount < 2) ensureVueScript();
+    if (Date.now() - started > MAX_MS) {
+      clearInterval(t);
+      showFatal('Vue 3 CDN 加载超时（Unpkg / jsDelivr / 百度静态均未可用），请检查网络或开启代理后刷新。');
+    }
+  }, 80);
+})();
+</script>
+</body>
+</html>

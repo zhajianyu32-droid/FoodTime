@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+/* ========== Tailwind v4 主题注册 ==========
+ * v4 不会自动从 :root 变量生成 bg-popover/bg-card 等工具类
+ * 必须用 @theme 显式注册，否则这些类等于不存在（背景透明）
+ */
+@theme {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --radius: var(--radius);
+}
+
+@layer base {
+  :root {
+    --background: 60 6% 95%;
+    --foreground: 20 14% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 14% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14% 10%;
+    --primary: 24 10% 20%;
+    --primary-foreground: 60 6% 95%;
+    --secondary: 60 5% 88%;
+    --secondary-foreground: 20 14% 10%;
+    --muted: 60 5% 88%;
+    --muted-foreground: 25 5% 40%;
+    --accent: 60 5% 85%;
+    --accent-foreground: 20 14% 10%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 60 6% 95%;
+    --border: 25 6% 80%;
+    --input: 25 6% 80%;
+    --ring: 24 10% 20%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 20 14% 8%;
+    --foreground: 60 6% 95%;
+    --card: 20 14% 14%;
+    --card-foreground: 60 6% 95%;
+    --popover: 20 14% 14%;
+    --popover-foreground: 60 6% 95%;
+    --primary: 60 6% 90%;
+    --primary-foreground: 20 14% 8%;
+    --secondary: 25 5% 18%;
+    --secondary-foreground: 60 6% 95%;
+    --muted: 25 5% 18%;
+    --muted-foreground: 60 5% 65%;
+    --accent: 25 5% 18%;
+    --accent-foreground: 60 6% 95%;
+    --destructive: 0 62% 41%;
+    --destructive-foreground: 60 6% 95%;
+    --border: 25 5% 25%;
+    --input: 25 5% 25%;
+    --ring: 60 6% 90%;
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+}
