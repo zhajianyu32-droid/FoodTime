@@ -1,0 +1,49 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.tox/
+.coverage
+htmlcov/
+
+# ===== Virtual environments =====
+.venv/
+venv/
+env/
+ENV/
+
+# ===== IDE =====
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+.idea/
+*.swp
+*.swo
+
+# ===== Environment / secrets (NEVER COMMIT) =====
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ===== Logs & runtime =====
+logs/
+*.log
+
+# ===== Databases =====
+*.db
+*.sqlite
+*.sqlite3
+
+# ===== OS =====
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# ===== Node (future frontend) =====
+node_modules/
+dist/
+.vite/

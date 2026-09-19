@@ -1,0 +1,40 @@
+version: "3.8"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: meiweichuzuwu-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-meiwei2026}
+      MYSQL_DATABASE: meiweichuzuwu
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql/06_schema_v2_final.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./sql/02_seed_data_mysql.sql:/docker-entrypoint-initdb.d/02_seed.sql
+      - ./sql/07_seed_v2_data.sql:/docker-entrypoint-initdb.d/03_seed_v2.sql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  backend:
+    build: ./backend
+    container_name: meiweichuzuwu-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-meiwei2026}
+      DB_NAME: meiweichuzuwu
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
+      DEBUG: "false"
+    depends_on:
+      - mysql
+
+volumes:
+  mysql_data:
