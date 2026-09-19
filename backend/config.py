@@ -105,6 +105,40 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"         # DEBUG/INFO/WARNING/ERROR
     LOG_DIR: str = "./logs"
 
+    def model_post_init(self, __context) -> None:
+        """
+        Railway 环境变量适配。
+
+        Railway 注入的 MySQL 插件变量名是 MYSQLHOST / MYSQLPORT / MYSQLUSER /
+        MYSQLPASSWORD / MYSQLDATABASE，与本项目使用的 DB_* 命名不一致。
+        这里做一层映射，使后端无需手填数据库连接信息即可走 **内网** 访问
+        （mysql.railway.internal，不经公网代理，更快且不暴露端口）。
+
+        优先级：显式配置的 DB_* > Railway 注入的 MYSQL* > 类默认值。
+        即：只有当 DB_HOST 仍是默认值 "localhost" 时才采用 MYSQLHOST，
+        避免本地开发时被误覆盖。
+        """
+        import os as _os
+
+        # 仅在 DB_HOST 未被显式配置（仍是默认 localhost）时启用映射
+        if self.DB_HOST not in ("localhost", ""):
+            return
+
+        host = _os.getenv("MYSQLHOST")
+        if not host:
+            return
+
+        self.DB_HOST = host
+        self.DB_TYPE = "mysql"
+        if _os.getenv("MYSQLPORT"):
+            self.DB_PORT = int(_os.getenv("MYSQLPORT"))
+        if _os.getenv("MYSQLUSER"):
+            self.DB_USER = _os.getenv("MYSQLUSER")
+        if _os.getenv("MYSQLPASSWORD"):
+            self.DB_PASSWORD = _os.getenv("MYSQLPASSWORD")
+        if _os.getenv("MYSQLDATABASE"):
+            self.DB_NAME = _os.getenv("MYSQLDATABASE")
+
     @property
     def is_test(self) -> bool:
         return self.APP_ENV == "test"
