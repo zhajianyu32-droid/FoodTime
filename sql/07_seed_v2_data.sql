@@ -106,7 +106,7 @@ INSERT INTO recipe_cache (user_id, recipe_name, difficulty, cooking_time, estima
  JSON_ARRAY('猪肉切丝腌制', '青椒切丝', '热油爆炒肉丝', '下青椒翻炒调味'),
  JSON_ARRAY('猪肉', '青椒'),
  JSON_ARRAY('姜丝', '料酒'),
- 'deepseek-chat', 0.70, 'a3f8b2c1d9e7f0a1'),
+ 'deepseek-chat', 0.70, 'c4d9e2b7a8f10365'),
 
 ('u-001', '豆腐青菜汤', 1, '12min', '¥4',
  '热乎暖胃适合疲惫晚上，清淡健康选择',
