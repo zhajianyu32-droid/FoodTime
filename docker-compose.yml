@@ -12,8 +12,8 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./sql/06_schema_v2_final.sql:/docker-entrypoint-initdb.d/01_schema.sql
-      - ./sql/02_seed_data_mysql.sql:/docker-entrypoint-initdb.d/02_seed.sql
+      - ./sql/_archive/06_schema_v2_final.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./sql/_archive/02_seed_data_mysql.sql:/docker-entrypoint-initdb.d/02_seed.sql
       - ./sql/07_seed_v2_data.sql:/docker-entrypoint-initdb.d/03_seed_v2.sql
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
 
@@ -33,6 +33,9 @@ services:
       DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
       DEBUG: "false"
+      # 容器内 locale 为 C/POSIX => open() 与 stdout 默认 ASCII，
+      # 本项目源码/日志大量中文，必须强制 UTF-8（配合 Dockerfile 内的同名 ENV）。
+      PYTHONUTF8: "1"
     depends_on:
       - mysql
 

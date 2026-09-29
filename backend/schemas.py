@@ -8,6 +8,36 @@ T = TypeVar("T")
 
 
 # ============================================================
+# P1-2: 入参长度/条数上限
+# 目标列宽度取自 models.py（同一份 metadata，由 tests/test_regressions.py
+# 里的 schema-vs-DB 用例保证两边不再漂移）。MySQL 端是 STRICT_TRANS_TABLES，
+# 超长不会静默截断而是直接 1406 报错 -> 用户看到 500，所以必须在入口拦。
+# ============================================================
+def _bounded_str_list(
+    items: list[str], *, max_items: int, item_max_len: int, field: str
+) -> list[str]:
+    """列表型文本字段的公共校验：条数上限 + 单项长度上限 + 去空白。
+
+    这些 list[str] 会被直接拼进 LLM prompt（库存食材 / 忌口 / 换一换排除项），
+    没有上限就等于给任何调用方留了一个"一次请求烧掉几万 token"的入口；
+    同时它们也原样落进 DB 的 JSON 列，脏数据会一路显示到前端。
+    """
+    if len(items) > max_items:
+        raise ValueError(f"{field} 最多 {max_items} 项（当前 {len(items)} 项）")
+    cleaned: list[str] = []
+    for it in items:
+        if not isinstance(it, str):
+            raise ValueError(f"{field} 必须是字符串列表")
+        s = it.strip()
+        if not s:
+            continue
+        if len(s) > item_max_len:
+            raise ValueError(f"{field} 单项不能超过 {item_max_len} 个字符")
+        cleaned.append(s)
+    return cleaned
+
+
+# ============================================================
 # 统一响应包装（P1-4 基础，P0-2 异常也用此格式）
 # ============================================================
 class ApiResponse(BaseModel, Generic[T]):
@@ -220,23 +250,25 @@ class OnboardingMetaResponse(BaseModel):
 # ===== Ingredients =====
 class IngredientCreate(BaseModel):
     user_id: str
-    name: str = Field(..., max_length=50)
-    category: str = Field("其他", description="蔬菜|肉蛋|水产|主食|调料|乳制品|其他")
-    quantity: str = Field("", description="如 3个, 半斤, 200g")
+    name: str = Field(..., min_length=1, max_length=50, description="食材名，空串会被拒（避免产生空白卡片）")
+    category: str = Field("其他", max_length=10, description="蔬菜|肉蛋|水产|主食|调料|乳制品|其他")
+    quantity: str = Field("", max_length=20, description="如 3个, 半斤, 200g")
     shelf_days: Optional[int] = Field(None, ge=1, le=3650, description="保质期天数，null 则按分类默认")
     expiry_date: Optional[date] = None
-    source: str = Field("manual", description="photo|voice|manual")
-    location: str = Field("pool", description="pool|freezer|fridge|cooking")
+    source: str = Field("manual", max_length=10, description="photo|voice|manual")
+    location: str = Field("pool", max_length=10, description="pool|freezer|fridge|cooking")
 
 
 class IngredientUpdate(BaseModel):
-    name: Optional[str] = None
-    category: Optional[str] = None
-    quantity: Optional[str] = None
+    # 之前这个 PATCH 模型完全没有长度约束，配合 main.py 里无脑 setattr，
+    # 可以把食材名改成空串 / 5000 字，把冰箱整页搞崩。
+    name: Optional[str] = Field(None, min_length=1, max_length=50)
+    category: Optional[str] = Field(None, max_length=10)
+    quantity: Optional[str] = Field(None, max_length=20)
     shelf_days: Optional[int] = Field(None, ge=1, le=3650)
     expiry_date: Optional[date] = None
-    status: Optional[str] = Field(None, description="available|used_up|expired")
-    location: Optional[str] = Field(None, description="pool|freezer|fridge|cooking")
+    status: Optional[str] = Field(None, max_length=10, description="available|used_up|expired")
+    location: Optional[str] = Field(None, max_length=10, description="pool|freezer|fridge|cooking")
 
 
 class IngredientOut(BaseModel):
@@ -259,13 +291,29 @@ class IngredientOut(BaseModel):
 # ===== Recipe =====
 class RecipeRequest(BaseModel):
     user_id: str
-    ingredient_names: list[str] = Field(default_factory=list, description="库存食材名称列表")
+    ingredient_names: list[str] = Field(default_factory=list, max_length=50, description="库存食材名称列表")
     taste_weights: dict[str, float] = Field(default_factory=dict, description="口味权重")
-    budget_level: str = "正常"
-    cooking_skill: str = "一般"
-    disliked_ingredients: list[str] = Field(default_factory=list)
-    exclude_recipes: list[str] = Field(default_factory=list, description="换一换: 排除已展示的菜名")
+    budget_level: str = Field("正常", max_length=50)
+    cooking_skill: str = Field("一般", max_length=50)
+    disliked_ingredients: list[str] = Field(default_factory=list, max_length=30)
+    exclude_recipes: list[str] = Field(default_factory=list, max_length=20, description="换一换: 排除已展示的菜名")
     regenerate_count: int = Field(0, ge=0, le=3, description="换一换次数")
+
+    @field_validator("ingredient_names", "disliked_ingredients", "exclude_recipes")
+    @classmethod
+    def _validate_str_lists(cls, v: list[str], info) -> list[str]:
+        rules = {
+            "ingredient_names": (50, 50),
+            "disliked_ingredients": (30, 50),
+            "exclude_recipes": (20, 100),
+        }
+        max_items, item_max_len = rules[info.field_name]
+        return _bounded_str_list(
+            v,
+            max_items=max_items,
+            item_max_len=item_max_len,
+            field=info.field_name,
+        )
 
 
 class RecipeItem(BaseModel):
@@ -289,10 +337,10 @@ class RecipeResponse(BaseModel):
 # ===== Shopping List =====
 class ShoppingItemCreate(BaseModel):
     user_id: str
-    name: str
-    category: str = "其他"
-    quantity: str = ""
-    source_recipe: str = ""
+    name: str = Field(..., min_length=1, max_length=50)
+    category: str = Field("其他", max_length=10)
+    quantity: str = Field("", max_length=20)
+    source_recipe: str = Field("", max_length=100)
 
 
 class ShoppingItemOut(BaseModel):
@@ -333,12 +381,21 @@ class FortuneResponse(BaseModel):
 # ===== Chat =====
 class ChatSessionCreate(BaseModel):
     user_id: str
-    mood: str = Field("", description="今日心情: 开心|难过|烦躁|焦虑|疲惫|庆祝|嘴馋|平淡")
+    mood: str = Field("", max_length=10, description="今日心情: 开心|难过|烦躁|焦虑|疲惫|庆祝|嘴馋|平淡")
 
 
 class ChatTurnRequest(BaseModel):
-    session_id: str
-    answer: str = Field("", description="用户本轮选择")
+    session_id: str = Field(..., max_length=36)
+    # answer 会被同时写进 chat_sessions.taste/staple/meat/form/budget_choice
+    # （全部 varchar(20)）和 chat_turns.content（varchar(500)）。
+    # ROUND_CONFIG 的合法选项最长 4 字，20 已留足余量；之前无上限，
+    # 直接 POST 长串就是 1406 -> 500。
+    answer: str = Field("", max_length=20, description="用户本轮选择")
+
+    @field_validator("answer")
+    @classmethod
+    def _strip_answer(cls, v: str) -> str:
+        return v.strip()
 
 
 class ChatTurnResponse(BaseModel):
@@ -399,25 +456,39 @@ class PreferenceWeight(BaseModel):
 
 class CookRecordCreate(BaseModel):
     user_id: str
-    dish_name: str
-    ai_recommend_id: str = Field("", description="菜谱推荐返回的 RecipeCache.id，用于归因统计推荐命中率")
+    dish_name: str = Field(..., min_length=1, max_length=100)
+    ai_recommend_id: str = Field("", max_length=36, description="菜谱推荐返回的 RecipeCache.id，用于归因统计推荐命中率")
     rating: int = Field(2, ge=1, le=3, description="1踩雷 2还行 3好吃")
-    mood: str = ""
-    cooking_time: Optional[int] = None
-    difficulty: str = "简单"
-    estimated_cost: Optional[float] = None
-    note: str = ""
-    tags: list[str] = Field(default_factory=list)
+    mood: str = Field("", max_length=10)
+    cooking_time: Optional[int] = Field(None, ge=0, le=9999)
+    difficulty: str = Field("简单", max_length=10)
+    estimated_cost: Optional[float] = Field(None, ge=0, le=999999.99)
+    note: str = Field("", max_length=200)
+    tags: list[str] = Field(default_factory=list, max_length=10)
+
+    @field_validator("tags")
+    @classmethod
+    def _validate_tags(cls, v: list[str]) -> list[str]:
+        return _bounded_str_list(v, max_items=10, item_max_len=20, field="tags")
 
 
 class TakeoutRecordCreate(BaseModel):
     user_id: str
-    session_id: str = ""
-    mood: str = ""
-    final_choice: str
-    choice_reason: str = ""
-    satisfaction: str = Field("", description="好吃|一般|踩雷")
-    conversation_rounds: int = 0
+    session_id: str = Field("", max_length=36)
+    mood: str = Field("", max_length=10)
+    final_choice: str = Field(..., min_length=1, max_length=100)
+    choice_reason: str = Field("", max_length=500)
+    satisfaction: str = Field("", max_length=10, description="好吃|一般|踩雷")
+    conversation_rounds: int = Field(0, ge=0, le=20)
+
+    @field_validator("satisfaction")
+    @classmethod
+    def _validate_satisfaction(cls, v: str) -> str:
+        # 前端 useOrder.js 只会发 好吃/一般/踩雷（"不好吃" 已在前端映射为 "踩雷"）
+        allowed = {"", "好吃", "一般", "踩雷"}
+        if v not in allowed:
+            raise ValueError(f"satisfaction 必须是以下之一: {', '.join(sorted(allowed))}")
+        return v
 
 
 class FeedbackRequest(BaseModel):

@@ -13,7 +13,7 @@ import sys
 import threading
 import uuid
 from contextvars import ContextVar
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from config import settings
@@ -46,10 +46,39 @@ _LEVEL_EMOJI = {
 }
 
 
+def _console_can_encode(ch: str) -> bool:
+    """判断当前 stdout 能否编码该字符。
+
+    中文 Windows 未设 PYTHONUTF8 时 sys.stdout.encoding == "gbk"，而控制台前缀里的
+    ℹ / ⚠ / ✖ / ☠ 不在 GBK 内，logging 会打印
+    "--- Logging error --- UnicodeEncodeError" 堆栈把真正的日志淹没。
+    这里检测一次，不支持就降级为 ASCII 标记，不去动全局 sys.stdout。
+    """
+    enc = getattr(sys.stdout, "encoding", None) or "ascii"
+    try:
+        ch.encode(enc)
+        return True
+    except (LookupError, UnicodeEncodeError):
+        return False
+
+
+_CONSOLE_EMOJI_OK = _console_can_encode("ℹ")
+_LEVEL_EMOJI_ASCII = {
+    "DEBUG": ".",
+    "INFO": "i",
+    "WARNING": "!",
+    "ERROR": "x",
+    "CRITICAL": "X",
+}
+
+
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:  # noqa: PLR6301
         payload = {
-            "ts": datetime.utcfromtimestamp(record.created).isoformat() + "Z",
+            # utcfromtimestamp() 已弃用（Py3.12 起告警，未来版本移除）；用带 tz 的等价写法。
+            "ts": datetime.fromtimestamp(
+                record.created, timezone.utc
+            ).isoformat().replace("+00:00", "Z"),
             "level": record.levelname,
             "logger": record.name,
             "trace_id": get_trace_id(),
@@ -69,7 +98,10 @@ class JsonFormatter(logging.Formatter):
 class ConsoleFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:  # noqa: PLR6301
         ts = datetime.fromtimestamp(record.created).strftime("%H:%M:%S")
-        emoji = _LEVEL_EMOJI.get(record.levelname, "?")
+        if _CONSOLE_EMOJI_OK:
+            emoji = _LEVEL_EMOJI.get(record.levelname, "?")
+        else:
+            emoji = _LEVEL_EMOJI_ASCII.get(record.levelname, "?")
         tid = get_trace_id()
         prefix = f"{ts} {emoji}{record.levelname:<7} [{tid[:8]}]"
         msg = f"{record.name}: {record.getMessage()}"
@@ -77,6 +109,34 @@ class ConsoleFormatter(logging.Formatter):
         if record.exc_info:
             line += "\n" + self.formatException(record.exc_info)
         return line
+
+
+# ---- 容错的轮转 handler ----
+class SafeRotatingFileHandler(logging.handlers.RotatingFileHandler):
+    """
+    轮转失败时不让日志系统崩掉。
+
+    场景：Windows 下文件被其他进程占用、容器多副本共享卷、只读文件系统。
+    标准 RotatingFileHandler 会抛 PermissionError，logging 内部打印
+    "--- Logging error ---" 并刷屏，业务日志反而丢失。
+
+    策略：轮转失败则记一次警告并继续写当前文件（放弃本次轮转），
+    保证日志内容不丢、进程不崩。
+    """
+
+    _rollover_failed_warned = False
+
+    def doRollover(self) -> None:  # noqa: D102
+        try:
+            super().doRollover()
+        except OSError as exc:
+            if not self._rollover_failed_warned:
+                self._rollover_failed_warned = True
+                # 直接用 stderr，避免再次进入本 handler 造成递归
+                print(
+                    f"[LOGGING] 日志轮转失败，将沿用当前文件继续写入: {exc}",
+                    file=sys.stderr,
+                )
 
 
 # ---- 初始化 ----
@@ -102,32 +162,47 @@ def setup_logging() -> logging.Logger:
     console.setFormatter(ConsoleFormatter())
     root.addHandler(console)
 
-    # 2. 文件（JSON Lines）
-    log_dir = settings.LOG_DIR
+    # 2. 文件（JSON Lines）—— 容器/Serverless 只读文件系统下自动降级为仅控制台
+    file_handlers: list[logging.Handler] = []
     try:
+        log_dir = settings.LOG_DIR
         os.makedirs(log_dir, exist_ok=True)
-    except OSError:
-        log_dir = "."
+        # 真正探测可写性：makedirs 成功不代表可写（只读挂载点会静默通过）
+        probe = os.path.join(log_dir, ".write_probe")
+        with open(probe, "w", encoding="utf-8") as fh:
+            fh.write("")
+        os.remove(probe)
 
-    app_file = logging.handlers.RotatingFileHandler(
-        os.path.join(log_dir, "app.log"),
-        maxBytes=10 * 1024 * 1024,  # 10MB
-        backupCount=10,
-        encoding="utf-8",
-    )
-    app_file.setFormatter(JsonFormatter())
-    root.addHandler(app_file)
+        # 3. 应用日志
+        app_file = SafeRotatingFileHandler(
+            os.path.join(log_dir, "app.log"),
+            maxBytes=10 * 1024 * 1024,  # 10MB
+            backupCount=10,
+            encoding="utf-8",
+        )
+        app_file.setFormatter(JsonFormatter())
+        file_handlers.append(app_file)
 
-    # 3. 错误单独归档
-    err_file = logging.handlers.RotatingFileHandler(
-        os.path.join(log_dir, "errors.log"),
-        maxBytes=10 * 1024 * 1024,
-        backupCount=5,
-        encoding="utf-8",
-    )
-    err_file.setLevel(logging.WARNING)
-    err_file.setFormatter(JsonFormatter())
-    root.addHandler(err_file)
+        # 4. 错误单独归档
+        err_file = SafeRotatingFileHandler(
+            os.path.join(log_dir, "errors.log"),
+            maxBytes=10 * 1024 * 1024,
+            backupCount=5,
+            encoding="utf-8",
+        )
+        err_file.setLevel(logging.WARNING)
+        err_file.setFormatter(JsonFormatter())
+        file_handlers.append(err_file)
+    except OSError as exc:
+        # 云平台只读文件系统（如 Vercel / 部分容器）—— 放弃文件日志，仅保留 stdout。
+        # stdout 会被平台采集，不影响排障。
+        log_dir = "<stdout-only>"
+        root.warning(
+            "[LOGGING] 日志目录不可写（%s），已降级为仅 stdout 输出。", exc
+        )
+
+    for h in file_handlers:
+        root.addHandler(h)
 
     # 屏蔽第三方噪声
     logging.getLogger("httpx").setLevel(logging.WARNING)

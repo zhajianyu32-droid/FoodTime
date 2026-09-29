@@ -136,7 +136,7 @@ async function saveCookRecord(r) {
     const body = {
       user_id: me.value.user_id || me.value.id,
       dish_name: r.name,
-      ai_recommend_id: r.cache_id || '',
+      ai_recommend_id: r.id || '',
       estimated_cost: parseCost(r.estimated_cost),
       cooking_time: parseMinutes(r.cooking_time),
       rating: 3,

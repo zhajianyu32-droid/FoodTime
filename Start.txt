@@ -1,3 +1,7 @@
+启动前先读：本项目源码与日志含大量中文，而中文 Windows 的默认编码是 GBK。
+必须先设置 PYTHONUTF8=1 再启动后端，否则会在导入阶段报 UnicodeDecodeError。
+（注意：只能用环境变量，不要用 `python -X utf8` 代替，因为 --reload 启动的子进程不会继承 -X 参数。）
+
 三个命令，分别在不同终端运行：
 
 **1. MySQL**（通常已开机自启，无需手动启动）
@@ -5,9 +9,17 @@
 net start MySQL83
 ```
 
-**2. 后端**（FastAPI）
+**2. 后端**（FastAPI，PowerShell）
 ```
 cd c:\Users\zjy\Desktop\校招\FoodTime\backend
+$env:PYTHONUTF8 = "1"
+python -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+如果用的是 cmd（不是 PowerShell）：
+```
+cd c:\Users\zjy\Desktop\校招\FoodTime\backend
+set PYTHONUTF8=1
 python -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 ```
 

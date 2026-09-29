@@ -6,6 +6,7 @@ P0-3 修复: 限流 + 用户配额（并发安全版）
 from __future__ import annotations
 
 import asyncio
+import os
 from datetime import date
 from typing import Callable, Awaitable
 
@@ -25,10 +26,25 @@ logger = get_logger("foodtime.quota")
 
 
 # ---------------- 1) slowapi 速率限制 ----------------
+# slowapi(=limits 库) 在 import Limiter 时会尝试读取一个 dotenv 文件，
+# 且读取用的是 open() 不带 encoding —— 也就是按操作系统 locale 解码。
+# 中文 Windows 上 locale 是 cp936(GBK)，于是：
+#   1) 若进程 CWD 恰好有 UTF-8 的 .env（本项目 backend/.env 就是），
+#      会在解码阶段直接 UnicodeDecodeError，应用连 import 都过不去；
+#   2) 若 CWD 没有 .env，它只是发一个 UserWarning，不影响运行。
+# 解决办法不是"给 .env 加 BOM / 改成 GBK"，而是把 limits 的配置文件
+# 显式指向一个纯 ASCII 的专用文件，让它永远读不到中文内容。
+# 该文件里所有 RATELIMIT_* 键都保持注释状态 => 完全沿用下面的代码参数，
+# 也就是说这次改动不改变任何限流行为，只是消除导入期崩溃。
+SLOWAPI_CONFIG_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "ratelimit.env"
+)
+
 limiter = Limiter(
     key_func=get_remote_address,
     enabled=True,   # 始终启用，DEBUG 下也防止暴力枚举
     storage_uri="memory://",
+    config_filename=SLOWAPI_CONFIG_FILE,
 )
 
 
@@ -159,13 +175,49 @@ async def consume_quota(user_id: str, kind: str) -> int:
         if used > limit:
             logger.warning(
                 "Quota exceeded user=%s kind=%s used=%s limit=%s",
-                user_id, kind, limit, limit,
+                user_id, kind, used, limit,
             )
             raise BizError(*ERR["QUOTA_EXCEEDED"])
         _save_used_to_db(user_id, kind, used)
         remaining = limit - used
         return remaining
 
+
+def peek_quota(user_id: str, kind: str) -> int:
+    """只读返回今日剩余配额（不消耗、不加锁、不写库）。
+
+    用途：在调用 LLM 之前先判断"还有没有额度"，避免明知配额耗尽
+    还去烧一次上游调用。真正的扣减仍由 consume_quota 在锁内完成，
+    本函数只是快照，存在竞态属可接受（最多多跑一次，不会超扣）。
+    读库失败时保守返回满额度，交给 consume_quota 兜底拦截。
+    """
+    limit = _QUOTA_LIMITS.get(kind, 9999)
+    try:
+        used = _load_used_from_db(user_id, kind)
+    except Exception:
+        logger.exception("peek_quota failed user=%s kind=%s", user_id, kind)
+        return limit
+    return max(0, limit - used)
+
+
+async def refund_quota(user_id: str, kind: str) -> None:
+    """归还一次"预扣"的配额（LLM 调用彻底失败时的补偿）。
+
+    与 consume_quota 共用同一把 (user_id, kind) 锁，保证读-改-写不丢更新。
+    本函数自身吞掉所有异常：回滚失败不应该掩盖调用方原本的异常。
+    """
+    lock = await _get_lock(user_id, kind)
+    async with lock:
+        try:
+            used = _load_used_from_db(user_id, kind)
+            if used <= 0:
+                return
+            _save_used_to_db(user_id, kind, used - 1)
+            logger.info(
+                "Quota refunded: user=%s kind=%s used=%s", user_id, kind, used - 1
+            )
+        except Exception:
+            logger.exception("refund_quota failed user=%s kind=%s", user_id, kind)
 
 def consume_quota_sync(user_id: str, kind: str) -> int:
     """

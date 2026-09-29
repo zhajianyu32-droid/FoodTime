@@ -58,6 +58,7 @@ ERR = {
     "SESSION_NOT_FOUND": (3003, "对话会话不存在或已结束"),
     "QUOTA_EXCEEDED": (3004, "今日配额已用完，请明天再来"),
     "RATE_LIMIT": (3005, "请求过于频繁，喝口水休息一下吧"),
+    "CHAT_TOO_MANY_SESSIONS": (3006, "你有多个未完成的点单对话，先完成一个再开始新的吧"),
     "LLM_UNAVAILABLE": (4001, "AI 服务暂时不可用，请稍后再试"),
     "LLM_TIMEOUT": (4002, "AI 思考超时了，重试一下"),
     "DB_ERROR": (5001, "数据库服务异常"),

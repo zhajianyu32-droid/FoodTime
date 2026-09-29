@@ -1,3 +1,4 @@
+import hashlib
 import json
 import time
 from sqlalchemy.orm import Session
@@ -8,6 +9,28 @@ from services.llm_service import llm_service
 
 
 class RecipeService:
+
+    # 一次推荐最多落库/复用 3 条菜谱（对应"三选一"的产品形态）
+    _MAX_RECIPES = 3
+
+    @staticmethod
+    def _slot_hashes(user_id: str, base_hash: str) -> list[str]:
+        """为一次推荐的 3 个坑位派生互不相同的缓存键。
+
+        recipe_cache 上有 UNIQUE(prompt_hash)（全局唯一，不是 per-user），
+        若 3 条菜谱共用同一个 prompt_hash，第 2、3 条要么撞约束、
+        要么被 _save_cache 的 existing 分支"复用第 1 条"，
+        导致缓存里永远只有 1 条、"换一换/再问"拿不到多样性。
+        这里用 sha256(user_id|base_hash|idx) 生成 3 个 64 位十六进制键，
+        恰好落在 prompt_hash String(64) 内；带 user_id 参与派生，
+        顺带消除跨用户命中同一行的可能。
+        """
+        return [
+            hashlib.sha256(
+                f"{user_id}|{base_hash}|{idx}".encode("utf-8")
+            ).hexdigest()
+            for idx in range(RecipeService._MAX_RECIPES)
+        ]
 
     async def recommend(self, req: RecipeRequest, db: Session) -> RecipeResponse:
         prompt = await llm_service.generate_recipe_prompt(
@@ -21,6 +44,9 @@ class RecipeService:
         # P0-4 修复(缓存污染): 把 exclude_recipes 一并纳入 hash，否则"换一换"写入的 cache 会污染不带 exclude 的后续请求
         prompt_hash_src = prompt + "::exclude=" + ",".join(sorted(req.exclude_recipes or []))
         prompt_hash = llm_service.hash_prompt(prompt_hash_src)
+        # P0-3 修复(一餐三选一被缓存压成一条): 每个坑位有独立的派生键，
+        # 返回给客户端的 prompt_hash 仍是 base_hash，契约不变。
+        slot_hashes = self._slot_hashes(req.user_id, prompt_hash)
 
         # 读缓存：仅当没有 exclude_recipes 时命中缓存（与写入端一致）
         cached = []
@@ -29,10 +55,10 @@ class RecipeService:
                 db.query(RecipeCache)
                 .filter(
                     RecipeCache.user_id == req.user_id,
-                    RecipeCache.prompt_hash == prompt_hash,
+                    RecipeCache.prompt_hash.in_(slot_hashes),
                 )
                 .order_by(RecipeCache.created_at.desc())
-                .limit(3)
+                .limit(RecipeService._MAX_RECIPES)
                 .all()
             )
             # P0-4 修复(缓存 TTL): 仅缓存 24 小时内的记录，避免长期运行下命中过期推荐
@@ -66,7 +92,7 @@ class RecipeService:
             recipe_list = self._fallback_recipes(req.ingredient_names)
 
         items: list[RecipeItem] = []
-        for r in recipe_list[:3]:
+        for idx, r in enumerate(recipe_list[:RecipeService._MAX_RECIPES]):
             item = RecipeItem(
                 id="",  # 先占位，_save_cache 里 flush 后再填
                 name=r.get("name", "未知菜名"),
@@ -78,7 +104,9 @@ class RecipeService:
                 matched_ingredients=list(r.get("matched_ingredients", []) or []),
                 missing_ingredients=list(r.get("missing_ingredients", []) or []),
             )
-            cache_id = self._save_cache(req.user_id, item, prompt_hash, result["model"], db)
+            cache_id = self._save_cache(
+                req.user_id, item, slot_hashes[idx], result["model"], db
+            )
             item.id = cache_id or item.id
             items.append(item)
 
@@ -91,14 +119,19 @@ class RecipeService:
         self,
         user_id: str,
         item: RecipeItem,
-        prompt_hash: str,
+        cache_hash: str,
         model: str,
         db: Session,
     ) -> str:
-        # 先查是否已存在相同 prompt_hash 的缓存，存在则直接复用（唯一键约束要求）
+        # 先查是否已存在相同缓存键的记录，存在则直接复用（唯一键约束要求）。
+        # 同时按 user_id 过滤：prompt_hash 全局唯一虽然够用，但显式带归属
+        # 可以防止未来把唯一键放宽成 (user_id, prompt_hash) 时串号。
         existing = (
             db.query(RecipeCache)
-            .filter(RecipeCache.prompt_hash == prompt_hash)
+            .filter(
+                RecipeCache.user_id == user_id,
+                RecipeCache.prompt_hash == cache_hash,
+            )
             .first()
         )
         if existing:
@@ -114,7 +147,7 @@ class RecipeService:
             matched_ingredients=item.matched_ingredients,
             missing_ingredients=item.missing_ingredients,
             llm_model=model,
-            prompt_hash=prompt_hash,
+            prompt_hash=cache_hash,
         )
         db.add(cache)
         db.flush()

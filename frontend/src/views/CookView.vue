@@ -316,7 +316,7 @@ onMounted(() => { if (me.value) loadIngredients() })
             点击「生成菜谱」获取 AI 推荐
           </div>
           <div v-else class="space-y-2 flex-1 min-h-0 overflow-y-auto">
-            <Card v-for="r in recipes" :key="r.cache_id || r.name" class="shadow-sm">
+            <Card v-for="r in recipes" :key="r.id || r.name" class="shadow-sm">
               <CardContent class="p-3 space-y-2">
                 <div class="flex items-start justify-between gap-2">
                   <div class="min-w-0">

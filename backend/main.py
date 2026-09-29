@@ -28,7 +28,7 @@ from models import (
     RecipeCache, ChatSession,
 )
 from quota_limiter import (
-    limiter, attach_limiter, consume_quota, get_quota_info, QuotaKind,
+    limiter, attach_limiter, consume_quota, get_quota_info, peek_quota, QuotaKind,
 )
 from schemas import (
     ApiResponse, PagedResponse, PageMeta,
@@ -70,6 +70,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_list,
+    allow_origin_regex=settings.cors_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*", "Authorization", "X-Trace-Id"],
@@ -132,6 +133,20 @@ def paged(data: list, page: int, page_size: int, total: int):
 
 VALID_INGREDIENT_CATEGORIES = {"蔬菜", "肉蛋", "水产", "主食", "调料", "乳制品", "其他"}
 
+# P1-4 修复(枚举校验补齐)：冰箱分区 / 食材状态。
+# 取值与 models.Ingredient 的 String(10) 列、前端 useCook.js 实际发送的值一致；
+# 之前这两个字段是"随便写"的，脏值会让前端筛选/分区整块失效（前端按精确值过滤）。
+_INGREDIENT_STATUS = {"available", "used_up", "expired"}
+_INGREDIENT_LOCATION = {"pool", "freezer", "fridge", "cooking"}
+
+
+def _check_choice(value: str, allowed: set, field: str) -> None:
+    if value and value not in allowed:
+        raise BizError(
+            ERR["PARAM_INVALID"][0],
+            f"{field} 必须是以下之一: {', '.join(sorted(allowed))}",
+        )
+
 
 def _check_category(value: str, field: str = "category") -> None:
     if value and value not in VALID_INGREDIENT_CATEGORIES:
@@ -139,6 +154,14 @@ def _check_category(value: str, field: str = "category") -> None:
             ERR["PARAM_INVALID"][0],
             f"{field} 必须是以下之一: {', '.join(sorted(VALID_INGREDIENT_CATEGORIES))}"
         )
+
+
+def _require_nonempty(value: str, field: str, max_len: int = 50) -> str:
+    """去空白后校验必填文本非空，避免纯空格绕过长度校验产生空白数据。"""
+    cleaned = (value or "").strip()[:max_len]
+    if not cleaned:
+        raise BizError(ERR["PARAM_INVALID"][0], f"{field} 不能为空")
+    return cleaned
 
 
 # ============================================================
@@ -489,14 +512,18 @@ def create_ingredient(
     # 强制归属为当前用户
     user_id = current_user.id
     _check_category(req.category)
+    _check_choice(req.location, _INGREDIENT_LOCATION, "location")
     ing = Ingredient(
         user_id=user_id,
-        name=req.name.strip()[:50],
+        name=_require_nonempty(req.name, "食材名称"),
         category=req.category,
         quantity=req.quantity,
         expiry_date=req.expiry_date,
         source=req.source,
         status="available",
+        # 修复：之前 req.location 被整体丢掉（永远落列默认值 pool），
+        # 客户端指定"直接放冷冻/冷藏"会静默失效。前端目前不传，默认仍为 pool。
+        location=req.location or "pool",
     )
     db.add(ing)
     try:
@@ -522,7 +549,17 @@ def update_ingredient(
     require_owner(ing.user_id, current_user)
     if req.category is not None:
         _check_category(req.category)
-    for k, v in req.model_dump(exclude_unset=True).items():
+    updates = req.model_dump(exclude_unset=True)
+    # 修复：之前这里无脑 setattr，等于绕过 POST 侧的 _require_nonempty ——
+    # 可以把食材名改成 ""/纯空格/超长串，前端出现无法显示的空白卡片，
+    # MySQL STRICT_TRANS_TABLES 下还会直接抛 500（varchar(50)）。
+    if "name" in updates:
+        updates["name"] = _require_nonempty(
+            updates["name"] or "", "食材名称", max_len=50
+        )
+    _check_choice(updates.get("status"), _INGREDIENT_STATUS, "status")
+    _check_choice(updates.get("location"), _INGREDIENT_LOCATION, "location")
+    for k, v in updates.items():
         setattr(ing, k, v)
     try:
         db.commit()
@@ -626,7 +663,7 @@ def create_shopping_item(
     _check_category(req.category)
     item = ShoppingItem(
         user_id=current_user.id,
-        name=req.name.strip()[:50],
+        name=_require_nonempty(req.name, "购物项名称"),
         category=req.category,
         quantity=req.quantity,
         source_recipe=req.source_recipe,
@@ -700,7 +737,9 @@ async def get_today_fortune(
 # Chat (Order Mode) — 5-round state machine
 # ============================================================
 @app.post("/api/chat/session", response_model=ApiResponse[ChatTurnResponse])
+@limiter.limit("10/minute")
 def create_chat_session(
+    request: Request,
     req: ChatSessionCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -708,14 +747,21 @@ def create_chat_session(
     # 强制归属
     from schemas import ChatSessionCreate as _SC
     req2 = _SC(user_id=current_user.id, mood=req.mood)
-    # P0-2 / P1-12 配额修复：仅在最终 LLM 推荐生成成功时才扣 CHAT 配额
-    # （避免 session 创建时就扣、实际 LLM 失败导致用户白亏一次额度）
-    # 此处不扣；扣额度位置移至 chat_service._generate_final_recommend 成功后。
+    # P1-1 修复：创建会话仍然"不扣"配额（真正的 LLM 调用要到第 5 轮结束才发生，
+    # 那时由 chat_service 预扣 + 失败回滚），但这里补上：
+    #   1) @limiter.limit —— 之前这个写接口完全没有限流，可以被脚本刷 session；
+    #   2) peek_quota —— 剩余配额已为 0 时，让用户答完 5 轮再告诉他"配额不足"
+    #      等于浪费双方时间，进门前就拒；
+    #   3) 未完成会话数量上限 —— 在 chat_service.create_session 内(3006)。
+    if peek_quota(current_user.id, QuotaKind.CHAT) <= 0:
+        raise BizError(*ERR["QUOTA_EXCEEDED"])
     return ok(chat_service.create_session(req2, db))
 
 
 @app.post("/api/chat/turn", response_model=ApiResponse[Union[ChatTurnResponse, ChatFinalRecommend]])
+@limiter.limit("30/minute")
 async def process_chat_turn(
+    request: Request,
     req: ChatTurnRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -761,7 +807,7 @@ def create_cook_record(
         record = CookRecord(
             user_id=user_id,
             ai_recommend_id=recommend_id,
-            dish_name=req.dish_name.strip()[:100],
+            dish_name=_require_nonempty(req.dish_name, "菜名", max_len=100),
             rating=req.rating,
             mood=req.mood,
             cooking_time=req.cooking_time,
@@ -844,7 +890,7 @@ def create_takeout_record(
             mood=req.mood,
             fortune_summary=fortune_summary,
             fortune_keywords=fortune_keywords,
-            final_choice=req.final_choice,
+            final_choice=_require_nonempty(req.final_choice, "外卖选择", max_len=100),
             choice_reason=req.choice_reason,
             conversation_rounds=req.conversation_rounds,
             satisfaction=req.satisfaction,
@@ -991,11 +1037,14 @@ def get_heatmap(
         next_month = date(y, m + 1, 1)
     month_start = date(y, m, 1)
 
+    # P1-3 修复：DAY() 是 MySQL 专有函数，SQLite 里根本不存在，
+    # 于是单测/本地 sqlite 模式下这个接口必报 "no such function: day"。
+    # 改为把 created_at 取回来在 Python 侧取 .day：排序、"当日首条胜出"语义不变，
+    # 且 MySQL / SQLite 通用（少一次函数调用，多传几个 datetime 而已，量级是可忽略的）。
     cook_days = {}
-    from sqlalchemy import func as sa_func
     cook_records = (
         db.query(
-            sa_func.day(CookRecord.created_at).label("d"),
+            CookRecord.created_at,
             CookRecord.dish_name,
             CookRecord.rating,
         )
@@ -1007,15 +1056,17 @@ def get_heatmap(
         .order_by(CookRecord.created_at.asc())
         .all()
     )
-    for cr in cook_records:
-        d = int(cr.d)
+    for created_at, dish_name, rating in cook_records:
+        if not created_at:
+            continue
+        d = created_at.day
         if d not in cook_days:
-            cook_days[d] = {"title": cr.dish_name, "rating": cr.rating or 2}
+            cook_days[d] = {"title": dish_name, "rating": rating or 2}
 
     takeout_days = {}
     takeout_records = (
         db.query(
-            sa_func.day(TakeoutRecord.created_at).label("d"),
+            TakeoutRecord.created_at,
             TakeoutRecord.final_choice,
         )
         .filter(
@@ -1026,10 +1077,12 @@ def get_heatmap(
         .order_by(TakeoutRecord.created_at.asc())
         .all()
     )
-    for tr in takeout_records:
-        d = int(tr.d)
+    for created_at, final_choice in takeout_records:
+        if not created_at:
+            continue
+        d = created_at.day
         if d not in takeout_days:
-            takeout_days[d] = {"title": tr.final_choice, "rating": 2}
+            takeout_days[d] = {"title": final_choice, "rating": 2}
 
     days_in_month = (next_month - month_start).days
     result = []

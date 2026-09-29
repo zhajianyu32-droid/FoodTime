@@ -1,15 +1,28 @@
 import json
+from datetime import datetime, timedelta
 from urllib.parse import quote as url_quote
 
 from sqlalchemy.orm import Session
 
+from errors import BizError, ERR
+from logging_config import get_logger
 from models import ChatSession, ChatTurn
-from quota_limiter import consume_quota, QuotaKind
+from quota_limiter import consume_quota, refund_quota, QuotaKind
 from schemas import (
     ChatSessionCreate, ChatTurnRequest, ChatTurnResponse, ChatFinalRecommend,
 )
 from services.llm_service import llm_service
 from services.preference_service import preference_service
+
+logger = get_logger("foodtime.chat")
+
+# P1-1 修复(点单会话可被无限创建): 同一用户最多同时持有 MAX_ACTIVE 个未完成的
+# 对话。之前 /api/chat/session 既不扣配额、也不限数量，刷接口就能无上限灌
+# chat_sessions 行；但加硬上限又会把"中途关掉页面"的用户永久锁死，
+# 所以同时引入 STALE_MINUTES 自愈：超过该时长仍未继续的 active 会话
+# 先自动置为 expired，再统计数量。
+MAX_ACTIVE_CHAT_SESSIONS = 3
+STALE_CHAT_SESSION_MINUTES = 30
 
 ROUND_CONFIG = [
     {
@@ -47,7 +60,46 @@ ROUND_CONFIG = [
 
 class ChatService:
 
-    def create_session(self, req: ChatSessionCreate, db: Session) -> ChatTurnResponse:
+    def create_session(
+        self,
+        req: ChatSessionCreate,
+        db: Session,
+        max_active: int = MAX_ACTIVE_CHAT_SESSIONS,
+        stale_minutes: int = STALE_CHAT_SESSION_MINUTES,
+    ) -> ChatTurnResponse:
+        now = datetime.now()
+        stale_before = now - timedelta(minutes=stale_minutes)
+        expired_cnt = (
+            db.query(ChatSession)
+            .filter(
+                ChatSession.user_id == req.user_id,
+                ChatSession.status == "active",
+                ChatSession.created_at < stale_before,
+            )
+            .update(
+                {"status": "expired", "completed_at": now},
+                synchronize_session=False,
+            )
+        )
+        # 自愈先落库：即便下面因为超限被拒绝，用户也不该继续背着僵尸会话。
+        db.commit()
+        if expired_cnt:
+            logger.info(
+                "Auto-expired %s stale chat sessions user=%s",
+                expired_cnt, req.user_id, user_id=req.user_id,
+            )
+
+        active_cnt = (
+            db.query(ChatSession)
+            .filter(
+                ChatSession.user_id == req.user_id,
+                ChatSession.status == "active",
+            )
+            .count()
+        )
+        if active_cnt >= max_active:
+            raise BizError(*ERR["CHAT_TOO_MANY_SESSIONS"])
+
         session = ChatSession(
             user_id=req.user_id,
             current_round=1,
@@ -77,11 +129,21 @@ class ChatService:
             .filter(ChatSession.id == req.session_id)
             .first()
         )
-        if not session or session.status != "active":
+        if not session:
             return ChatFinalRecommend(
                 session_id=req.session_id or "",
                 final_recommend="",
-                recommend_reason="会话不存在或已结束",
+                recommend_reason="会话不存在",
+            )
+        if session.status != "active":
+            # 已完成会话被重复进入（刷新重试/误触）：回放已生成的结果，
+            # 否则前端会拿到空推荐，把上一次的结论覆盖成空白。
+            if session.final_recommend:
+                return self._build_final_response(session)
+            return ChatFinalRecommend(
+                session_id=session.id,
+                final_recommend="",
+                recommend_reason="会话已结束，暂无推荐结果",
             )
 
         round_idx = session.current_round - 1
@@ -145,9 +207,19 @@ class ChatService:
             {"role": "system", "content": "你是外卖推荐助手，返回JSON格式。"},
             {"role": "user", "content": prompt},
         ]
-        result = await llm_service.chat_completion(
-            messages, temperature=0.7, response_format_json=True
-        )
+        # P1-1 修复(配额扣减时机): 原实现是"LLM 返回之后"才 consume，
+        # 于是配额已耗尽的用户每次仍会真打一次上游（花钱 + 等 30s 超时），
+        # 直到 consume 抛错才拒绝 —— 配额拦截完全滞后。
+        # 现在改为进入 LLM 前预扣；只有 chat_completion 彻底抛异常（它内部
+        # 已含重试与降级 mock，抛出来就是真失败了）才把这一次归还。
+        await consume_quota(session.user_id, QuotaKind.CHAT)
+        try:
+            result = await llm_service.chat_completion(
+                messages, temperature=0.7, response_format_json=True
+            )
+        except Exception:
+            await refund_quota(session.user_id, QuotaKind.CHAT)
+            raise
 
         try:
             data = json.loads(result["content"])
@@ -167,15 +239,12 @@ class ChatService:
         session.total_tokens = result.get("total_tokens", 0)
         db.commit()
 
-        # P1-12 修复: 仅当最终 LLM 推荐成功（含降级 fallback 能给出结果）才扣一次 CHAT 配额
-        # 使用 degraded/mock 也算作"成功给出结果"，不会让用户白扣一次；
-        # 如果本函数抛异常则直接跳过不扣，保证配额公平。
-        try:
-            await consume_quota(session.user_id, QuotaKind.CHAT)
-        except Exception:
-            # 配额不足时已经有全局 BizError 处理；这里不吞，让外层正常抛出
-            raise
+        # 配额已在调用 LLM 之前预扣（见上方 P1-1 注释）。走到这里说明推荐结果
+        # 已经落库，degraded/mock 兜底同样视为"成功给出结果"，不退款。
+        return self._build_final_response(session)
 
+    def _build_final_response(self, session: ChatSession) -> ChatFinalRecommend:
+        """按已落库的推荐结果构造最终响应（供生成完成与重复进入两种场景复用）。"""
         keyword = session.final_recommend or "川味牛肉面"
         kw = url_quote(keyword)
         kw_with_tag = url_quote(keyword + " 外卖")
