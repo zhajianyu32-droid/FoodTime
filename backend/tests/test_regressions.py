@@ -46,6 +46,19 @@ def _read(path: str) -> str:
         return f.read()
 
 
+def _assert_pure_ascii(path: str) -> None:
+    """按 OS locale 解码的文件必须纯 ASCII：中文 Windows(cp936) 下 open() 不带
+    encoding，UTF-8 中文注释会直接 UnicodeDecodeError。"""
+    raw = open(path, "rb").read()
+    bad = [i for i, b in enumerate(raw) if b > 0x7F]
+    assert not bad, f"{os.path.basename(path)} 含 {len(bad)} 个非 ASCII 字节（首个在偏移 {bad[0]}）"
+
+
+# 入库模板必须携带的键：缺任何一个，照抄 .env.example 起出来的 .env 就不完整
+REQUIRED_ENV_KEYS = ("APP_ENV", "DB_TYPE", "DB_HOST", "SECRET_KEY",
+                     "DEEPSEEK_API_KEY", "LLM_CHAT_QUOTA")
+
+
 def _db():
     """复用 database.py 的全局 engine（另建内存引擎会因 SingletonThreadPool
     每连接一个内存库而报 no such table）。"""
@@ -143,24 +156,38 @@ def test_a02_startup_configs_are_pure_ascii():
     uvicorn 的 --env-format、starlette 的 Config、limits 的 dotenv 读取
     都用 open() 不带 encoding，中文 Windows 上是 cp936(GBK)：
     UTF-8 中文注释会直接 UnicodeDecodeError，应用根本起不来。
-    """
-    targets = [
-        os.path.join(BACKEND, ".env"),
-        os.path.join(BACKEND, ".env.local"),
-        os.path.join(BACKEND, ".env.example"),
-        os.path.join(BACKEND, "ratelimit.env"),
-    ]
-    for path in targets:
-        assert os.path.isfile(path), f"缺少配置文件: {path}"
-        raw = open(path, "rb").read()
-        bad = [i for i, b in enumerate(raw) if b > 0x7F]
-        assert not bad, f"{os.path.basename(path)} 含 {len(bad)} 个非 ASCII 字节"
 
-    # ASCII 化只动注释：键名必须还在，否则配置整体失效
-    env = _read(os.path.join(BACKEND, ".env"))
-    for key in ("APP_ENV", "DB_TYPE", "DB_HOST", "SECRET_KEY",
-                "DEEPSEEK_API_KEY", "LLM_CHAT_QUOTA"):
-        assert re.search(rf"^\s*{key}=", env, re.M), f".env 丢失键 {key}"
+    注意断言范围：只有**入库的**配置模板是硬性要求。backend/.env 与 .env.local
+    是本地密钥文件，被 .gitignore 排除，干净克隆/CI 里根本不存在——早期版本写成
+    assert isfile，任何新克隆都会因此变红（在 80b507d 的实测克隆里就是 1 failed）。
+    """
+    # 1) 入库模板：必须存在，且必须纯 ASCII
+    for name in (".env.example", "ratelimit.env", "pytest.ini"):
+        path = os.path.join(BACKEND, name)
+        assert os.path.isfile(path), f"缺少入库配置文件: {name}"
+        _assert_pure_ascii(path)
+
+    # 2) 未跟踪的本地文件：存在才校验，不存在就跳过（不是失败）
+    local = [n for n in (".env", ".env.local")
+             if os.path.isfile(os.path.join(BACKEND, n))]
+    for name in local:
+        _assert_pure_ascii(os.path.join(BACKEND, name))
+
+    # 3) 键完整性：A9 的 ASCII 化只动注释，键名不能丢，否则配置整体失效。
+    #    只对"完整配置"文件断言：入库模板 + 本地 .env。
+    #    .env.local 是只放密钥的覆盖层（设计上不含全部键），故不参与这项断言。
+    #    注意先算出缺失键名再断言：直接 assert re.search(..., env) 会把整个文件
+    #    正文打进失败日志，而 .env 里是有真实密钥的。
+    complete = [".env.example"] + [n for n in local if n != ".env.local"]
+    for name in complete:
+        env = _read(os.path.join(BACKEND, name))
+        missing = [k for k in REQUIRED_ENV_KEYS
+                   if not re.search(rf"^\s*{k}=", env, re.M)]
+        assert not missing, f"{name} 缺少键: {missing}"
+
+    if not local:
+        pytest.skip("本地 .env/.env.local 均未创建（被 .gitignore 排除）："
+                    "入库模板已校验，本地文件部分跳过")
 
 
 def test_a03_limiter_uses_dedicated_ascii_config():
