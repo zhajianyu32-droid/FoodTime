@@ -18,7 +18,7 @@ export function chipRow(d, x, y, maxWidth, items, selected, o = {}) {
 /* ============================ 登录 ============================ */
 export function screenLogin() {
   const d = new Doc("登录", W, H);
-  d.rect("登录卡片", (W - 420) / 2, 190, 420, 400, { fill: T.card, stroke: T.border, rx: 8 });
+  d.rect("登录卡片", (W - 420) / 2, 190, 420, 348, { fill: T.card, stroke: T.border, rx: 8 });
   const x = (W - 420) / 2 + 24, iw = 420 - 48;
   d.text("标题", x, 236, "登录", { size: 24, weight: 700 });
   d.text("副标题", x, 262, "登录食光 FoodTime，开启你的美食决策之旅", { size: 14, fill: T.mutedFg });
@@ -33,7 +33,7 @@ export function screenLogin() {
 /* ============================ 注册 ============================ */
 export function screenRegister() {
   const d = new Doc("注册", W, H);
-  d.rect("注册卡片", (W - 420) / 2, 140, 420, 500, { fill: T.card, stroke: T.border, rx: 8 });
+  d.rect("注册卡片", (W - 420) / 2, 140, 420, 410, { fill: T.card, stroke: T.border, rx: 8 });
   const x = (W - 420) / 2 + 24, iw = 420 - 48;
   d.text("标题", x, 186, "注册", { size: 24, weight: 700 });
   d.text("副标题", x, 212, "创建账户，开始记录你的每一餐", { size: 14, fill: T.mutedFg });
@@ -100,12 +100,12 @@ export function screenAbout() {
   const d = new Doc("关于", W, H);
   sidebar(d, "about");
   let y = pageHeader(d, "📖 关于", "了解 FoodTime 背后的故事与技术栈");
-  card(d, "项目信息卡片", CONTENT_X, y, CONTENT_W, 250);
+  card(d, "项目信息卡片", CONTENT_X, y, CONTENT_W, 268);
   d.text("项目名称大标题", CONTENT_X + 24, y + 42, "食光 FoodTime", { size: 24, weight: 700 });
   d.text("项目副标题", CONTENT_X + 24, y + 66, "独居青年吃饭决策助手", { size: 14, fill: T.mutedFg });
   const rows = [
-    ["项目名称", "FoodTime · 食光"], ["版本", "v1.0"], ["后端", "FastAPI + SQLAlchemy"],
-    ["前端", "Vue 3 + Vite + Tailwind"], ["运行环境", "Docker / Python 3.12"], ["许可", "MIT"],
+    ["项目名称", "FoodTime · 食光"], ["版本", "v0.1.0"], ["后端", "FastAPI + SQLAlchemy"],
+    ["前端", "Vue 3 + shadcn-vue"], ["运行环境", "Python 3.12 (dev)"], ["许可", "MIT"],
   ];
   rows.forEach((r, i) => {
     const col = i % 3, row = Math.floor(i / 3);
@@ -114,7 +114,9 @@ export function screenAbout() {
     d.text("信息内容 " + r[0], x, yy + 22, r[1], { size: 14, weight: 500 });
   });
   d.text("技术栈小标题", CONTENT_X + 24, y + 226, "技术栈", { size: 12, weight: 500, fill: T.mutedFg });
-  y += 250 + 16;
+  let tx = CONTENT_X + 24;
+  ["FastAPI", "Vue 3", "SQLAlchemy", "Tailwind CSS", "shadcn-vue", "LLM"].forEach(t => { tx += badge(d, tx, y + 234, t, { variant: "outline" }) + 8; });
+  y += 268 + 16;
   card(d, "核心能力卡片", CONTENT_X, y, CONTENT_W, 250);
   d.text("能力标题", CONTENT_X + 24, y + 38, "核心能力", { size: 18, weight: 600 });
   d.text("能力副标题", CONTENT_X + 24, y + 60, "FoodTime 提供的几大场景化能力", { size: 12, fill: T.mutedFg });

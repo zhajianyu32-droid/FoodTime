@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" fill="none">
 <rect id="背景" width="1440" height="900" fill="#f3f3f1"/>
-<rect id="注册卡片" x="510" y="140" width="420" height="500" fill="#ffffff" stroke="#cfcbc9" stroke-width="1" rx="8"/>
+<rect id="注册卡片" x="510" y="140" width="420" height="410" fill="#ffffff" stroke="#cfcbc9" stroke-width="1" rx="8"/>
 <text id="标题" x="534" y="186" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="24" font-weight="700" fill="#1d1816" xml:space="preserve">注册</text>
 <text id="副标题" x="534" y="212" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="14" font-weight="400" fill="#6b6561" xml:space="preserve">创建账户，开始记录你的每一餐</text>
 <text id="用户名 标签" x="534" y="250" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="12" font-weight="500" fill="#1d1816" xml:space="preserve">用户名</text>

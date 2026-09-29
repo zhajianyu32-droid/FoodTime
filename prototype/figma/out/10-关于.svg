@@ -28,29 +28,41 @@
 </g>
 <text id="页面标题" x="328" y="48" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="24" font-weight="700" fill="#1d1816" xml:space="preserve">📖 关于</text>
 <text id="页面副标题" x="328" y="72" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="14" font-weight="400" fill="#6b6561" xml:space="preserve">了解 FoodTime 背后的故事与技术栈</text>
-<rect id="项目信息卡片" x="328" y="96" width="1024" height="250" fill="#ffffff" stroke="#cfcbc9" stroke-width="1" rx="8"/>
+<rect id="项目信息卡片" x="328" y="96" width="1024" height="268" fill="#ffffff" stroke="#cfcbc9" stroke-width="1" rx="8"/>
 <text id="项目名称大标题" x="352" y="138" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="24" font-weight="700" fill="#1d1816" xml:space="preserve">食光 FoodTime</text>
 <text id="项目副标题" x="352" y="162" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="14" font-weight="400" fill="#6b6561" xml:space="preserve">独居青年吃饭决策助手</text>
 <text id="信息标签 项目名称" x="352" y="200" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="12" font-weight="400" fill="#6b6561" xml:space="preserve">项目名称</text>
 <text id="信息内容 项目名称" x="352" y="222" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="14" font-weight="500" fill="#1d1816" xml:space="preserve">FoodTime · 食光</text>
 <text id="信息标签 版本" x="680" y="200" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="12" font-weight="400" fill="#6b6561" xml:space="preserve">版本</text>
-<text id="信息内容 版本" x="680" y="222" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="14" font-weight="500" fill="#1d1816" xml:space="preserve">v1.0</text>
+<text id="信息内容 版本" x="680" y="222" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="14" font-weight="500" fill="#1d1816" xml:space="preserve">v0.1.0</text>
 <text id="信息标签 后端" x="1008" y="200" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="12" font-weight="400" fill="#6b6561" xml:space="preserve">后端</text>
 <text id="信息内容 后端" x="1008" y="222" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="14" font-weight="500" fill="#1d1816" xml:space="preserve">FastAPI + SQLAlchemy</text>
 <text id="信息标签 前端" x="352" y="262" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="12" font-weight="400" fill="#6b6561" xml:space="preserve">前端</text>
-<text id="信息内容 前端" x="352" y="284" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="14" font-weight="500" fill="#1d1816" xml:space="preserve">Vue 3 + Vite + Tailwind</text>
+<text id="信息内容 前端" x="352" y="284" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="14" font-weight="500" fill="#1d1816" xml:space="preserve">Vue 3 + shadcn-vue</text>
 <text id="信息标签 运行环境" x="680" y="262" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="12" font-weight="400" fill="#6b6561" xml:space="preserve">运行环境</text>
-<text id="信息内容 运行环境" x="680" y="284" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="14" font-weight="500" fill="#1d1816" xml:space="preserve">Docker / Python 3.12</text>
+<text id="信息内容 运行环境" x="680" y="284" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="14" font-weight="500" fill="#1d1816" xml:space="preserve">Python 3.12 (dev)</text>
 <text id="信息标签 许可" x="1008" y="262" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="12" font-weight="400" fill="#6b6561" xml:space="preserve">许可</text>
 <text id="信息内容 许可" x="1008" y="284" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="14" font-weight="500" fill="#1d1816" xml:space="preserve">MIT</text>
 <text id="技术栈小标题" x="352" y="322" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="12" font-weight="500" fill="#6b6561" xml:space="preserve">技术栈</text>
-<rect id="核心能力卡片" x="328" y="362" width="1024" height="250" fill="#ffffff" stroke="#cfcbc9" stroke-width="1" rx="8"/>
-<text id="能力标题" x="352" y="400" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="18" font-weight="600" fill="#1d1816" xml:space="preserve">核心能力</text>
-<text id="能力副标题" x="352" y="422" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="12" font-weight="400" fill="#6b6561" xml:space="preserve">FoodTime 提供的几大场景化能力</text>
-<text id="能力 1" x="352" y="454" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="13" font-weight="400" fill="#1d1816" xml:space="preserve">🍳 Cook Mode：选冰箱食材 → AI 推荐菜谱，一键记录做饭或加入购物单补货</text>
-<text id="能力 2" x="352" y="480" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="13" font-weight="400" fill="#1d1816" xml:space="preserve">🛒 购物清单：按推荐菜谱缺料自动生成，勾选已购即同步入库</text>
-<text id="能力 3" x="352" y="506" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="13" font-weight="400" fill="#1d1816" xml:space="preserve">🥡 外卖决策：和 AI 对话几轮，让 LLM 推荐今天点什么外卖</text>
-<text id="能力 4" x="352" y="532" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="13" font-weight="400" fill="#1d1816" xml:space="preserve">🥬 食材管理：冰箱食材统一登记，自动临期/过期提醒</text>
-<text id="能力 5" x="352" y="558" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="13" font-weight="400" fill="#1d1816" xml:space="preserve">📖 美食日记：做饭/外卖记录沉淀，生成偏好权重与饮食热力图</text>
-<text id="能力 6" x="352" y="584" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="13" font-weight="400" fill="#1d1816" xml:space="preserve">⚙️ 偏好档案：星座/属相/MBTI/口味/菜系/厨具/忌口三层树</text>
+<rect id="徽章 FastAPI" x="352" y="330" width="64" height="22" fill="#ffffff" stroke="#cfcbc9" stroke-width="1" rx="6"/>
+<text id="徽章文字 FastAPI" x="384" y="345" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="12" font-weight="400" fill="#1d1816" text-anchor="middle" xml:space="preserve">FastAPI</text>
+<rect id="徽章 Vue 3" x="424" y="330" width="46" height="22" fill="#ffffff" stroke="#cfcbc9" stroke-width="1" rx="6"/>
+<text id="徽章文字 Vue 3" x="447" y="345" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="12" font-weight="400" fill="#1d1816" text-anchor="middle" xml:space="preserve">Vue 3</text>
+<rect id="徽章 SQLAlchemy" x="478" y="330" width="79" height="22" fill="#ffffff" stroke="#cfcbc9" stroke-width="1" rx="6"/>
+<text id="徽章文字 SQLAlchemy" x="517.5" y="345" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="12" font-weight="400" fill="#1d1816" text-anchor="middle" xml:space="preserve">SQLAlchemy</text>
+<rect id="徽章 Tailwind CSS" x="565" y="330" width="83" height="22" fill="#ffffff" stroke="#cfcbc9" stroke-width="1" rx="6"/>
+<text id="徽章文字 Tailwind CSS" x="606.5" y="345" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="12" font-weight="400" fill="#1d1816" text-anchor="middle" xml:space="preserve">Tailwind CSS</text>
+<rect id="徽章 shadcn-vue" x="656" y="330" width="78" height="22" fill="#ffffff" stroke="#cfcbc9" stroke-width="1" rx="6"/>
+<text id="徽章文字 shadcn-vue" x="695" y="345" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="12" font-weight="400" fill="#1d1816" text-anchor="middle" xml:space="preserve">shadcn-vue</text>
+<rect id="徽章 LLM" x="742" y="330" width="38" height="22" fill="#ffffff" stroke="#cfcbc9" stroke-width="1" rx="6"/>
+<text id="徽章文字 LLM" x="761" y="345" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="12" font-weight="400" fill="#1d1816" text-anchor="middle" xml:space="preserve">LLM</text>
+<rect id="核心能力卡片" x="328" y="380" width="1024" height="250" fill="#ffffff" stroke="#cfcbc9" stroke-width="1" rx="8"/>
+<text id="能力标题" x="352" y="418" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="18" font-weight="600" fill="#1d1816" xml:space="preserve">核心能力</text>
+<text id="能力副标题" x="352" y="440" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="12" font-weight="400" fill="#6b6561" xml:space="preserve">FoodTime 提供的几大场景化能力</text>
+<text id="能力 1" x="352" y="472" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="13" font-weight="400" fill="#1d1816" xml:space="preserve">🍳 Cook Mode：选冰箱食材 → AI 推荐菜谱，一键记录做饭或加入购物单补货</text>
+<text id="能力 2" x="352" y="498" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="13" font-weight="400" fill="#1d1816" xml:space="preserve">🛒 购物清单：按推荐菜谱缺料自动生成，勾选已购即同步入库</text>
+<text id="能力 3" x="352" y="524" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="13" font-weight="400" fill="#1d1816" xml:space="preserve">🥡 外卖决策：和 AI 对话几轮，让 LLM 推荐今天点什么外卖</text>
+<text id="能力 4" x="352" y="550" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="13" font-weight="400" fill="#1d1816" xml:space="preserve">🥬 食材管理：冰箱食材统一登记，自动临期/过期提醒</text>
+<text id="能力 5" x="352" y="576" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="13" font-weight="400" fill="#1d1816" xml:space="preserve">📖 美食日记：做饭/外卖记录沉淀，生成偏好权重与饮食热力图</text>
+<text id="能力 6" x="352" y="602" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="13" font-weight="400" fill="#1d1816" xml:space="preserve">⚙️ 偏好档案：星座/属相/MBTI/口味/菜系/厨具/忌口三层树</text>
 </svg>
