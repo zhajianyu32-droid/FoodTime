@@ -10,8 +10,10 @@ import { Separator } from '@/components/ui/separator'
 const router = useRouter()
 const route = useRoute()
 
-// 确保无论从哪个子路由进入，me/quota 都被初始化
-onMounted(() => { reloadMe() })
+// 确保无论从哪个子路由进入，me/quota 都被初始化。
+// 路由守卫 beforeResolve 已 await 过一次 reloadMe()，此处仅在 me 仍为空时兜底，
+// 避免登录/刷新场景下同一份用户资料被重复请求 3~4 次。
+onMounted(() => { if (!me.value) reloadMe() })
 
 const navGroups = [
   {

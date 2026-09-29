@@ -3,6 +3,10 @@
 -- 补充: 口味权重JSON / 偏好权重表 / 对话会话 / 菜谱缓存
 -- 日期：2026-08-17
 -- 依赖：先执行 06_schema_v2_final.sql + 02_seed_data_mysql.sql
+-- ⚠️ 2026-09-27 归档说明：06/02 已移入 sql/_archive/，且 06 为过时 schema
+--    （users 仅 9 字段，缺 username/password_hash 等，直接执行会导致注册/登录 500）。
+--    新环境建表请用 deploy_init_db.py（以 backend/models.py 为唯一真相源），
+--    本文件仅在已按 models.py 建好表并灌过基础数据后追加示例数据时使用。
 -- ============================================================
 USE meiweichuzuwu;
 
@@ -106,7 +110,7 @@ INSERT INTO recipe_cache (user_id, recipe_name, difficulty, cooking_time, estima
  JSON_ARRAY('猪肉切丝腌制', '青椒切丝', '热油爆炒肉丝', '下青椒翻炒调味'),
  JSON_ARRAY('猪肉', '青椒'),
  JSON_ARRAY('姜丝', '料酒'),
- 'deepseek-chat', 0.70, 'a3f8b2c1d9e7f0a1'),
+ 'deepseek-chat', 0.70, 'c4d9e2b7a8f10365'),
 
 ('u-001', '豆腐青菜汤', 1, '12min', '¥4',
  '热乎暖胃适合疲惫晚上，清淡健康选择',
