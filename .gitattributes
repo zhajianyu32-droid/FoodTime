@@ -1,0 +1,82 @@
+# Line-ending policy for this repository.
+#
+# WHY THIS FILE IS NEEDED
+#   core.autocrlf=true is set in the *global* git config (it is not in
+#   .git/config), and until now this repo had no .gitattributes. That means
+#   every fresh clone or checkout rewrote LF -> CRLF, which silently breaks
+#   files that are not consumed by a Windows text editor:
+#     backend/Dockerfile ......... CMD ["sh", "-c", "..."] gains a trailing CR
+#     docker-compose.yml ......... YAML scalars gain a trailing CR
+#     backend/.env.example ...... dotenv readers (limits / starlette) return
+#     backend/ratelimit.env ..... values ending with CR, e.g. DB_HOST=127.0.0.1\r
+#     *.sh ...................... bash: "bad interpreter" / "command not found\r"
+#   .gitattributes has higher precedence than core.autocrlf, so these rules win
+#   regardless of each developer's local setting.
+#
+# NO RENORMALIZATION COMMIT IS REQUIRED
+#   All 566 tracked blobs are already stored with LF (verified with
+#   `git ls-files --eol`: 561 i/lf, 4 binary, 1 empty). The clean filter below
+#   turns a CRLF working copy back into the same LF blob, so `git status` stays
+#   clean after adding this file.
+
+* text=auto eol=lf
+
+# ---------------------------------------------------------------------------
+# Files that must be LF: assert it explicitly instead of relying on the
+# text/binary heuristic, so a future editor cannot flip them.
+# ---------------------------------------------------------------------------
+*.py    text eol=lf
+*.js    text eol=lf
+*.cjs   text eol=lf
+*.vue   text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.toml  text eol=lf
+*.ini   text eol=lf
+*.css   text eol=lf
+*.sql   text eol=lf
+*.html  text eol=lf
+*.sh    text eol=lf
+Dockerfile      text eol=lf
+.dockerignore   text eol=lf
+.gitignore      text eol=lf
+.gitattributes  text eol=lf
+.env.example    text eol=lf
+*.env           text eol=lf
+
+# ---------------------------------------------------------------------------
+# Windows-only inputs keep CRLF.
+#   Batch files are parsed by cmd.exe, which mishandles LF-only labels/goto.
+#   Start.txt is the human quick-start note opened in Notepad.
+# ---------------------------------------------------------------------------
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+/Start.txt text eol=crlf
+
+# ---------------------------------------------------------------------------
+# Never run the EOL filters on binary content.
+# ---------------------------------------------------------------------------
+*.zip    binary
+*.docx   binary
+*.xlsx   binary
+*.pptx   binary
+*.pdf    binary
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.webp   binary
+*.bmp    binary
+*.woff   binary
+*.woff2  binary
+*.ttf    binary
+*.otf    binary
+*.eot    binary
+*.jar    binary
+*.db     binary
+*.sqlite binary
+*.pyc    binary
