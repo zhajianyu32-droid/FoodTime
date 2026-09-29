@@ -13,9 +13,9 @@ else:
     engine = create_engine(
         settings.db_url,
         pool_pre_ping=True,
-        pool_size=10,
-        max_overflow=20,
-        pool_recycle=3600,
+        pool_size=settings.DB_POOL_SIZE,
+        max_overflow=settings.DB_MAX_OVERFLOW,
+        pool_recycle=settings.DB_POOL_RECYCLE,
         echo=settings.DEBUG,
     )
 

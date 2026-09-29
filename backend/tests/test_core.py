@@ -144,13 +144,14 @@ def test_preference_init_weights_covers_all_dimensions():
 # 3. ChatService — 5 轮状态机
 # ============================================================
 def _make_db():
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-    from database import Base
+    """
+    复用 database.py 的全局 engine，确保表对 quota_limiter 等服务同样可见。
+    （若另建内存引擎，各连接的内存库互相隔离，会报 no such table）
+    """
+    from database import engine, Base, SessionLocal
 
-    engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(bind=engine)
-    return sessionmaker(bind=engine)()
+    return SessionLocal()
 
 
 def test_chat_round_config_has_5_rounds():
@@ -262,17 +263,19 @@ def test_jwt_token_pair_and_validation():
 @pytest.mark.asyncio
 async def test_quota_concurrent_not_oversold():
     """同一用户在 asyncio.gather 高并发下，used 总量不应超过 limit。"""
-    from quota_limiter import consume_quota, QuotaKind, _daily_usage, _lock_pool
-    from datetime import date
+    import quota_limiter as _ql
+    from quota_limiter import consume_quota, QuotaKind
+    from database import engine, Base
+
+    # 内存库不跨连接共享，必须在使用前建表
+    Base.metadata.create_all(bind=engine)
 
     USER_ID = "u-quota-stress-01"
     KIND = QuotaKind.RECIPE
 
-    # 重置当日计数，避免污染
-    today = date.today().isoformat()
-    _daily_usage[today][USER_ID].pop(KIND, None)
+    # 重置该用户当日计数，避免污染（实现已改为 DB 持久化）
+    _ql._save_used_to_db(USER_ID, KIND, 0)
     # 把 limit 临时压到 5 便于测溢出
-    import quota_limiter as _ql
     original_limits = _ql._QUOTA_LIMITS
     _ql._QUOTA_LIMITS = {KIND: 5}
     try:
@@ -283,7 +286,7 @@ async def test_quota_concurrent_not_oversold():
                 results.append(await t)
             except Exception:
                 results.append("QUOTA_ERR")
-        used = _ql._daily_usage[today][USER_ID].get(KIND, 0)
+        used = _ql._load_used_from_db(USER_ID, KIND)
         assert used == 5, f"used={used} 超过 limit=5，并发超卖 bug 未修复"
         success_count = sum(1 for x in results if x != "QUOTA_ERR")
         assert success_count == 5, f"success={success_count} 超过 limit=5"
@@ -291,6 +294,7 @@ async def test_quota_concurrent_not_oversold():
         assert err_count == 15
     finally:
         _ql._QUOTA_LIMITS = original_limits
+        _ql._save_used_to_db(USER_ID, KIND, 0)
 
 
 # ============================================================
