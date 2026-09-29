@@ -15,6 +15,7 @@ A+B 批次修复的回归守卫。
   B2     schemas 的入参长度/条数/枚举上限与 DB 列宽一致
   B3     食材 location 落库 + 枚举校验 + 热力图在 SQLite 可用
   B4     点单配额预扣/失败回滚 + 未完成会话上限与僵尸自愈
+  R1     .gitattributes 锁定 LF（抵消 core.autocrlf=true，防 CR 混进 Dockerfile/.env*）
 
 运行:
   cd backend ; $env:PYTHONUTF8="1" ; python -m pytest -q
@@ -189,6 +190,39 @@ def test_a02_startup_configs_are_pure_ascii():
         pytest.skip("本地 .env/.env.local 均未创建（被 .gitignore 排除）："
                     "入库模板已校验，本地文件部分跳过")
 
+
+def test_r01_repo_pins_lf_line_endings():
+    """R1 守门：.gitattributes 必须把 LF 钉死，抵消机器上的 core.autocrlf=true。
+
+    这些文件不是给 Windows 文本编辑器消费的：一旦被 checkout 成 CRLF，行尾就多一个
+    CR 字节 —— backend/Dockerfile 的 CMD ["sh", "-c", "..."] 直接失败，limits 和
+    starlette 的 dotenv 读取会返回带 CR 的值（DB_HOST=127.0.0.1<CR>）。CR 本身是
+    合法 ASCII 字节，_assert_pure_ascii 挡不住它，所以这条必须单独守。
+
+    只检查策略文件本身，不检查工作树里各文件的字节：Windows 开发者机器上工作树是
+    CRLF 属于预期（add 时 clean 回 LF blob），断言工作树无 CR 反而会大面积误报。
+    """
+    path = os.path.join(ROOT, ".gitattributes")
+    assert os.path.isfile(path), (
+        ".gitattributes 丢失：core.autocrlf=true 来自 global 配置，"
+        "新克隆会把 Dockerfile / .env* / docker-compose.yml 变成 CRLF"
+    )
+    _assert_pure_ascii(path)  # 属性文件按字节匹配，非 ASCII 注释会引入编码风险
+
+    text = _read(path)
+    assert re.search(r"^\*[ \t]+text=auto[ \t]+eol=lf[ \t]*$", text, re.M), \
+        ".gitattributes 缺少总开关 `* text=auto eol=lf`"
+
+    # 会被 CR 打穿的运行时文件要逐条显式声明，不能只靠 text=auto 的启发式判断
+    for needle in ("Dockerfile", ".env.example", "*.env", "*.yml", "*.sh", "*.py"):
+        pattern = "^" + re.escape(needle) + r"[ \t]+text[ \t]+eol=lf[ \t]*$"
+        assert re.search(pattern, text, re.M), \
+            f".gitattributes 未把 {needle} 声明为 text eol=lf"
+
+    # 二进制内容绝不能做行尾转换，否则 zip/docx 会被改坏
+    for ext in ("*.zip", "*.docx"):
+        assert re.search("^" + re.escape(ext) + r"[ \t]+binary[ \t]*$", text, re.M), \
+            f".gitattributes 未把 {ext} 声明为 binary"
 
 def test_a03_limiter_uses_dedicated_ascii_config():
     """A1/A2 守门：Limiter 指向 ratelimit.env，且该文件不改变任何限流行为。"""
