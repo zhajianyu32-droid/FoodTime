@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" fill="none">
+<rect id="背景" width="1440" height="900" fill="#f3f3f1"/>
+<rect id="登录卡片" x="510" y="190" width="420" height="400" fill="#ffffff" stroke="#cfcbc9" stroke-width="1" rx="8"/>
+<text id="标题" x="534" y="236" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="24" font-weight="700" fill="#1d1816" xml:space="preserve">登录</text>
+<text id="副标题" x="534" y="262" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="14" font-weight="400" fill="#6b6561" xml:space="preserve">登录食光 FoodTime，开启你的美食决策之旅</text>
+<text id="用户名 标签" x="534" y="300" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="12" font-weight="500" fill="#1d1816" xml:space="preserve">用户名</text>
+<rect id="用户名 输入框" x="534" y="310" width="372" height="36" fill="#ffffff" stroke="#cfcbc9" stroke-width="1" rx="6"/>
+<text id="用户名 内容" x="546" y="333" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="14" font-weight="400" fill="#6b6561" xml:space="preserve">3-50位中英数字下划线</text>
+<text id="密码 标签" x="534" y="368" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="12" font-weight="500" fill="#1d1816" xml:space="preserve">密码</text>
+<rect id="密码 输入框" x="534" y="378" width="372" height="36" fill="#ffffff" stroke="#cfcbc9" stroke-width="1" rx="6"/>
+<text id="密码 内容" x="546" y="401" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="14" font-weight="400" fill="#6b6561" xml:space="preserve">至少 6 位</text>
+<rect id="登录按钮" x="534" y="428" width="372" height="40" fill="#38322e" rx="6"/>
+<text id="登录按钮 文字" x="720" y="453" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="14" font-weight="500" fill="#f3f3f1" text-anchor="middle" xml:space="preserve">登录</text>
+<text id="注册引导" x="534" y="500" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="14" font-weight="400" fill="#6b6561" xml:space="preserve">还没有账户？</text>
+<text id="注册链接" x="618" y="500" font-family="'PingFang SC','Microsoft YaHei','Noto Sans SC','Segoe UI',sans-serif" font-size="14" font-weight="500" fill="#38322e" xml:space="preserve">立即注册</text>
+</svg>
